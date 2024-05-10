@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "retasc"
+version = "0.1.0"
+description = "Plans product release work in Jira based on schedules in Product Pages"
+authors = [
+  "Red Hat, Inc. and others"
+]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+packages = [{include = "retasc", from = "src"}]
+repository = "https://github.com/release-engineering/retasc"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+opentelemetry-sdk = "^1.24.0"
+opentelemetry-instrumentation-flask = "<1.0"
+opentelemetry-instrumentation-requests = "<1.0"
+opentelemetry-exporter-otlp-proto-http = "^1.24.0"
+
+# for tests
+pytest = {version = "^8.2.0", optional = true}
+pytest-cov = {version = "^5.0.0", optional = true}
+
+[tool.poetry.extras]
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.poetry.scripts]
+retasc = "retasc.__main__:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
