@@ -14,7 +14,8 @@ def run_main(*args, code=None):
 
         with raises(SystemExit) as e:
             run_module("retasc")
-            assert e.code == code
+
+        assert e.value.code == code
 
 
 @mark.parametrize("arg", ("--help", "-h"))
