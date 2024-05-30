@@ -14,8 +14,8 @@ repository = "https://github.com/release-engineering/retasc"
 python = "^3.12"
 
 opentelemetry-sdk = "^1.24.0"
-opentelemetry-instrumentation-flask = "<1.0"
-opentelemetry-instrumentation-requests = "<1.0"
+opentelemetry-instrumentation-flask = "^0.45b0"
+opentelemetry-instrumentation-requests = "^0.45b0"
 opentelemetry-exporter-otlp-proto-http = "^1.24.0"
 
 # for tests
