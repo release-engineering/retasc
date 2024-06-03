@@ -40,7 +40,7 @@ repos:
 
   # Linter and formatter
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.2
+    rev: v0.4.7
     hooks:
       - id: ruff
         args:
@@ -70,6 +70,6 @@ repos:
 
   # Fix common misspellings
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.2.6
+    rev: v2.3.0
     hooks:
       - id: codespell
