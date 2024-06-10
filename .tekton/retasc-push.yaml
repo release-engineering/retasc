@@ -196,7 +196,7 @@ spec:
         resolver: bundles
       when:
       - input: $(params.prefetch-input)
-        operator: notin
+        operator: notin  # codespell:ignore notin
         values:
         - ""
       workspaces:
