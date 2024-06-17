@@ -87,6 +87,21 @@ Inspect specific test failure:
 tox -e py3 -- --no-cov -lvvvvsxk test_init_tracing_with_valid_config
 ```
 
+Install poetry with [pipx]:
+
+```
+# On macOS
+brew install pipx
+pipx ensurepath
+
+# On Fedora
+sudo dnf install pipx
+pipx ensurepath
+
+# Install poetry
+pipx install poetry
+```
+
 Install and run the app to virtualenv with [Poetry]:
 
 ```
@@ -100,4 +115,9 @@ Clean up the virtualenv (can be useful after larger host system updates):
 poetry env remove --all
 ```
 
+If you are not familiar with those please watch this [Tutorial] to have some ideas on what are
+poetry, pre-commit, flake, tox, etc...
+
+[pipx]: https://pipx.pypa.io/stable/
 [Poetry]: https://python-poetry.org/docs/
+[Tutorial]: https://www.linkedin.com/learning/create-an-open-source-project-in-python
