@@ -1,16 +1,18 @@
-
 # SPDX-License-Identifier: GPL-3.0-or-later
 """
 Production Pages API
 """
 
 from functools import cache
+
 from retasc import requests_session
+
 
 class ProductPagesApi:
     """
     Product Pages API Client
     """
+
     def __init__(self, api_url: str):
         self.api_url = api_url
         self.session = requests_session.requests_session()
@@ -44,9 +46,10 @@ class ProductPagesApi:
 
     @cache
     def release_schedules(
-        self, release_short_name: str,
+        self,
+        release_short_name: str,
         fields: str = "release_shortname,name,slug,date_start,date_finish,flags",
-        **kwargs
+        **kwargs,
     ) -> list[dict]:
         """
         https://{api_url_release_schedule_tasks}/?{kwargs...}
@@ -70,4 +73,7 @@ class ProductPagesApi:
         """
 
         releases_list = self.active_releases(product_shortname)
-        return {r["shortname"]: self.release_schedules(r["shortname"]) for r in releases_list}
+        return {
+            r["shortname"]: self.release_schedules(r["shortname"])
+            for r in releases_list
+        }
