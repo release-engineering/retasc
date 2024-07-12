@@ -4,7 +4,7 @@ import argparse
 
 from retasc import __doc__ as doc
 from retasc import __version__
-from retasc.logging import init_logging
+from retasc.retasc_logging import init_logging
 from retasc.tracing import init_tracing
 
 
