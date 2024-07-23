@@ -47,6 +47,29 @@ Below is list of environment variables supported in the container image:
 - `OTEL_EXPORTER_SERVICE_NAME` - service name for OpenTelemetry; if unset
   (default), traces are not exported
 
+## Validator
+
+The ReTaSC project includes a validator to ensure that rule files are correctly formatted and adhere to the expected schema (`validator/schemas/rules_schema.yaml`).
+
+### Validating a Rule File
+
+To validate a rule file, you can use the `validate_rules.py` script. This script checks the rule file against the defined schema and reports any validation errors.
+
+#### Usage
+
+```
+retasc --validate-rule <path_to_rule_file>
+
+python -m retasc.validator.validate_rules <path_to_rule_file>
+
+python __main__.py --validate-rule <path_to_rule_file>
+```
+#### Example
+
+```
+retasc --validate-rule validator/schemas/example_rule.yaml
+```
+
 ## Development
 
 This section lists useful commands to help with ReTaSC development.
