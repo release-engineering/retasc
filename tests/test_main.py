@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import sys
 from runpy import run_module
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from pytest import mark, raises
 
@@ -42,8 +42,11 @@ def test_dummy_run(capsys):
     assert stdout == ""
     assert stderr == ""
 
+
 def test_validate_rule_called(tmp_path):
     rule_file = "mock"
-    with patch("retasc.validator.validate_rules.validate_rule", MagicMock(return_value=True)) as mock_validate_rule:
+    with patch(
+        "retasc.validator.validate_rules.validate_rule", MagicMock(return_value=True)
+    ) as mock_validate_rule:
         run_main("--validate-rule", str(rule_file), code=None)
         mock_validate_rule.assert_called_once_with(str(rule_file))
