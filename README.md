@@ -49,11 +49,11 @@ Below is list of environment variables supported in the container image:
 
 ## Validator
 
-The ReTaSC project includes a validator to ensure that rule files are correctly formatted and adhere to the expected schema (`validator/schemas/rules_schema.yaml`).
+The ReTaSC project includes a validator to ensure that rule files are correctly formatted and adhere to the expected schema `validator/schemas/rules_schema.yaml`.
 
 ### Validating a Rule File
 
-To validate a rule file, you can use the `validate_rules.py` script. This script checks the rule file against the defined schema and reports any validation errors.
+To validate a rule file, if retasc is installed you can use the argument `--validate-rule` to validate a new file. Alternatively, you can use the python commands to execute the `validate_rules.py` script. This checks the rule file against the defined schema and reports any validation errors.
 
 #### Usage
 

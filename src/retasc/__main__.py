@@ -28,5 +28,3 @@ init_tracing()
 
 if args.validate_rule:
     validate_rule(args.validate_rule)
-
-
