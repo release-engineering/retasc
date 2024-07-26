@@ -48,5 +48,14 @@ def test_validate_rule_called(tmp_path):
     with patch(
         "retasc.validator.validate_rules.validate_rule", MagicMock(return_value=True)
     ) as mock_validate_rule:
-        run_main("--validate-rule", str(rule_file), code=None)
+        run_main("validate-rule", str(rule_file), code=None)
         mock_validate_rule.assert_called_once_with(str(rule_file))
+
+
+def test_generate_schema_called():
+    schema_file = "mock"
+    with patch(
+        "retasc.validator.generate_schema.generate_schema", MagicMock(return_value=True)
+    ) as mock_generate_schema:
+        run_main("generate-schema", str(schema_file), code=None)
+        mock_generate_schema.assert_called_once_with(str(schema_file))

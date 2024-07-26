@@ -6,6 +6,7 @@ import yaml
 from retasc.validator.validate_rules import validate_rule, validate_rule_dict
 
 valid_rule_dict = {
+    "version": 1,
     "name": "Example Rule",
     "prerequisites": {
         "pp_schedule_item_name": "Release Date",

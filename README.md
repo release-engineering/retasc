@@ -53,17 +53,14 @@ The ReTaSC project includes a validator to ensure that rule files are correctly 
 
 ### Validating a Rule File
 
-To validate a rule file, if retasc is installed you can use the argument `--validate-rule` to validate a new file. Alternatively, you can use the python commands to execute the `validate_rules.py` script. This checks the rule file against the defined schema and reports any validation errors.
+To validate a rule file, if retasc is installed you can use the argument `--validate-rule` to validate a file. This checks the rule file and reports any validation errors.
 
 #### Usage
 
 ```
 retasc --validate-rule <path_to_rule_file>
-
-python -m retasc.validator.validate_rules <path_to_rule_file>
-
-python __main__.py --validate-rule <path_to_rule_file>
 ```
+
 #### Example
 
 ```

@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import yaml
 from pydantic import ValidationError
@@ -27,6 +28,4 @@ def validate_rule_dict(rule_data):
 
 
 if __name__ == "__main__":
-    import sys
-
     validate_rule(sys.argv[1])
