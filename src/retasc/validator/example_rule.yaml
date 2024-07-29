@@ -1,3 +1,4 @@
+version: 1
 name: "Example Rule"
 prerequisites:
   pp_schedule_item_name: "Release Date"

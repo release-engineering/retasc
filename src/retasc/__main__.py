@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 import argparse
+import sys
 
 from retasc import __doc__ as doc
 from retasc import __version__
@@ -27,17 +28,22 @@ def parse_args():
 
     generate_parser = subparsers.add_parser("generate-schema", help="Generate a schema")
     generate_parser.add_argument(
-        "schema_file", type=str, help="Path to the schema file to generate"
+        "schema_file", type=str, help="Output schema file to generate"
     )
 
     return parser.parse_args()
 
 
-args = parse_args()
-init_logging()
-init_tracing()
+def main():
+    args = parse_args()
+    init_logging()
+    init_tracing()
 
-if args.command == "validate-rule":
-    validate_rule(args.rule_file)
-elif args.command == "generate-schema":
-    generate_schema(args.schema_file)
+    try:
+        if args.command == "validate-rule":
+            validate_rule(args.rule_file)
+        elif args.command == "generate-schema":
+            generate_schema(args.schema_file)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        sys.exit(1)

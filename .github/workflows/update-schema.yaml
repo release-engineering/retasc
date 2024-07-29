@@ -1,0 +1,39 @@
+---
+name: Update Schema
+
+"on":
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs: {}
+
+jobs:
+  generate-schema:
+    name: Generate and Upload Schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install retasc
+
+      - name: Generate schema
+        run: retasc generate-schema schema.yaml
+
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p public
+          cp schema.yaml public/
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: public
+          publish_branch: gh-pages

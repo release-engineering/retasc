@@ -1,20 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import sys
-from runpy import run_module
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from pytest import mark, raises
+
+from retasc.__main__ import main
 
 
 def run_main(*args, code=None):
     with patch.object(sys, "argv", ["retasc", *args]):
         if code is None:
-            run_module("retasc")
+            main()
             return
 
         with raises(SystemExit) as e:
-            run_module("retasc")
-
+            main()
         assert e.value.code == code
 
 
@@ -43,19 +43,28 @@ def test_dummy_run(capsys):
     assert stderr == ""
 
 
-def test_validate_rule_called(tmp_path):
-    rule_file = "mock"
-    with patch(
-        "retasc.validator.validate_rules.validate_rule", MagicMock(return_value=True)
-    ) as mock_validate_rule:
-        run_main("validate-rule", str(rule_file), code=None)
-        mock_validate_rule.assert_called_once_with(str(rule_file))
+@patch("retasc.__main__.validate_rule")
+def test_validate_rule(mock_validate_rule, capsys):
+    run_main("validate-rule", "test_rule.yaml")
+    mock_validate_rule.assert_called_once_with("test_rule.yaml")
+    stdout, stderr = capsys.readouterr()
+    assert stdout == ""
+    assert stderr == ""
 
 
-def test_generate_schema_called():
-    schema_file = "mock"
+@patch("retasc.__main__.generate_schema")
+def test_generate_schema(mock_generate_schema, capsys):
+    run_main("generate-schema", "output_schema.json")
+    mock_generate_schema.assert_called_once_with("output_schema.json")
+    stdout, stderr = capsys.readouterr()
+    assert stdout == ""
+    assert stderr == ""
+
+
+def test_main_exception(capsys):
     with patch(
-        "retasc.validator.generate_schema.generate_schema", MagicMock(return_value=True)
-    ) as mock_generate_schema:
-        run_main("generate-schema", str(schema_file), code=None)
-        mock_generate_schema.assert_called_once_with(str(schema_file))
+        "retasc.__main__.validate_rule", side_effect=Exception("Test exception")
+    ):
+        run_main("validate-rule", "test_rule.yaml", code=1)
+        stdout, stderr = capsys.readouterr()
+        assert "An error occurred: Test exception" in stdout
