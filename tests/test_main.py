@@ -59,12 +59,3 @@ def test_generate_schema(mock_generate_schema, capsys):
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
     assert stderr == ""
-
-
-def test_main_exception(capsys):
-    with patch(
-        "retasc.__main__.validate_rule", side_effect=Exception("Test exception")
-    ):
-        run_main("validate-rule", "test_rule.yaml", code=1)
-        stdout, stderr = capsys.readouterr()
-        assert "An error occurred: Test exception" in stdout

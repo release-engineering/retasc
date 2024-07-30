@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from retasc.validator.config import SCHEMA_VERSION
+
 
 class JiraIssue(BaseModel):
     """Represents a Jira issue, which can have subtasks."""
@@ -31,7 +33,9 @@ class Prerequisites(BaseModel):
 class Rule(BaseModel):
     """Represents a rule which includes prerequisites and Jira issues."""
 
-    version: int = Field(description="The version of the rule.")
+    version: int = Field(
+        description=f"The version of the rule schema. The latest version is {SCHEMA_VERSION}."
+    )
     name: str = Field(description="The name of the rule.")
     prerequisites: Prerequisites = Field(description="The prerequisites for the rule.")
     jira_issues: list[JiraIssue] = Field(description="The jira issues for the rule.")

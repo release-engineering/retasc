@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
 import argparse
-import sys
+import logging
 
 from retasc import __doc__ as doc
 from retasc import __version__
@@ -9,6 +9,8 @@ from retasc.retasc_logging import init_logging
 from retasc.tracing import init_tracing
 from retasc.validator.generate_schema import generate_schema
 from retasc.validator.validate_rules import validate_rule
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -39,11 +41,7 @@ def main():
     init_logging()
     init_tracing()
 
-    try:
-        if args.command == "validate-rule":
-            validate_rule(args.rule_file)
-        elif args.command == "generate-schema":
-            generate_schema(args.schema_file)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        sys.exit(1)
+    if args.command == "validate-rule":
+        validate_rule(args.rule_file)
+    elif args.command == "generate-schema":
+        generate_schema(args.schema_file)
