@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from retasc.validator.config import SCHEMA_VERSION
+SCHEMA_VERSION = 1
 
 
 class JiraIssue(BaseModel):

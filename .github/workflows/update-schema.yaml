@@ -28,7 +28,7 @@ jobs:
         run: poetry install --only=main
 
       - name: Generate schema
-        run: retasc generate-schema schema.yaml
+        run: poetry run retasc generate-schema schema.yaml
 
       - name: Prepare deployment directory
         run: |
