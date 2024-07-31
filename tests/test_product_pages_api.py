@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0+
+# SPDX-License-Identifier: GPL-3.0-or-later
 from pytest import fixture
 
 from retasc.product_pages_api import ProductPagesApi
