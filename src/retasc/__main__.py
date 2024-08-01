@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import argparse
 import logging
+import sys
+
+from pydantic import ValidationError
 
 from retasc import __doc__ as doc
 from retasc import __version__
@@ -42,6 +45,12 @@ def main():
     init_tracing()
 
     if args.command == "validate-rule":
-        validate_rule(args.rule_file)
+        try:
+            validate_rule(args.rule_file)
+            logger.info("The rule is valid.")
+        except ValidationError as e:
+            logger.error(f"The rule is invalid: {e}")
+            sys.exit(1)
     elif args.command == "generate-schema":
         generate_schema(args.schema_file)
+    sys.exit(0)

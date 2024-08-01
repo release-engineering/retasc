@@ -1,10 +1,8 @@
-import logging
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 import yaml
 
 from retasc.validator.models import Rule
-
-logger = logging.getLogger(__name__)
 
 
 def generate_schema(output_path: str) -> None:

@@ -2,6 +2,7 @@
 import sys
 from unittest.mock import patch
 
+from pydantic import ValidationError
 from pytest import mark, raises
 
 from retasc.__main__ import main
@@ -37,25 +38,28 @@ def test_version(arg, capsys):
 
 
 def test_dummy_run(capsys):
-    run_main()
+    run_main(code=0)
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
     assert stderr == ""
 
 
 @patch("retasc.__main__.validate_rule")
-def test_validate_rule(mock_validate_rule, capsys):
-    run_main("validate-rule", "test_rule.yaml")
-    mock_validate_rule.assert_called_once_with("test_rule.yaml")
-    stdout, stderr = capsys.readouterr()
-    assert stdout == ""
-    assert stderr == ""
+def test_validate_rule(mock_validate_rule):
+    run_main("validate-rule", "any_valid_rule.yaml", code=0)
+    mock_validate_rule.assert_called_once_with("any_valid_rule.yaml")
+
+
+@patch("retasc.__main__.validate_rule")
+def test_validate_invalid_rule(mock_validate_rule):
+    mock_validate_rule.side_effect = ValidationError.from_exception_data(
+        title="mocked", line_errors=[]
+    )
+    run_main("validate-rule", "any_invalid_rule.yaml", code=1)
+    mock_validate_rule.assert_called_once_with("any_invalid_rule.yaml")
 
 
 @patch("retasc.__main__.generate_schema")
-def test_generate_schema(mock_generate_schema, capsys):
-    run_main("generate-schema", "output_schema.json")
+def test_generate_schema(mock_generate_schema):
+    run_main("generate-schema", "output_schema.json", code=0)
     mock_generate_schema.assert_called_once_with("output_schema.json")
-    stdout, stderr = capsys.readouterr()
-    assert stdout == ""
-    assert stderr == ""
