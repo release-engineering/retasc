@@ -1,0 +1,72 @@
+$defs:
+  JiraIssue:
+    properties:
+      template:
+        description: The template string for the jira issue.
+        title: Template
+        type: string
+      subtasks:
+        default: []
+        description: The subtasks for the jira issue.
+        items:
+          $ref: '#/$defs/JiraIssue'
+        title: Subtasks
+        type: array
+    required:
+    - template
+    title: JiraIssue
+    type: object
+  Prerequisites:
+    description: Defines the prerequisites needed for a rule.
+    properties:
+      pp_schedule_item_name:
+        description: The name of the pp schedule item.
+        title: Pp Schedule Item Name
+        type: string
+      days_before_or_after:
+        description: The number of days to adjust the schedule relative to the PP
+          schedule item date. A negative value indicates the number of days before
+          the PP schedule item date, while a positive value indicates the number of
+          days after the PP schedule item date. This value helps determine the target
+          date for creating Jira issues.
+        title: Days Before Or After
+        type: integer
+      dependent_rules:
+        default: []
+        description: The dependent rules for the prerequisite schedule item.
+        items:
+          type: string
+        title: Dependent Rules
+        type: array
+    required:
+    - pp_schedule_item_name
+    - days_before_or_after
+    title: Prerequisites
+    type: object
+description: Represents a rule which includes prerequisites and Jira issues.
+properties:
+  version:
+    description: The version of the rule schema. The latest version is 1.
+    title: Version
+    type: integer
+  name:
+    description: The name of the rule.
+    title: Name
+    type: string
+  prerequisites:
+    allOf:
+    - $ref: '#/$defs/Prerequisites'
+    description: The prerequisites for the rule.
+  jira_issues:
+    description: The jira issues for the rule.
+    items:
+      $ref: '#/$defs/JiraIssue'
+    title: Jira Issues
+    type: array
+required:
+- version
+- name
+- prerequisites
+- jira_issues
+title: Rule
+type: object

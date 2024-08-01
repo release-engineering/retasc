@@ -73,3 +73,8 @@ repos:
     rev: v2.3.0
     hooks:
       - id: codespell
+
+  - repo: https://github.com/release-engineering/retasc
+    rev: pre-commit-update-schemas
+    hooks:
+      - id: update-retasc-schemas

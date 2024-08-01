@@ -1,0 +1,7 @@
+- id: update-retasc-schemas
+  name: Update ReTaSC schemas
+  description: This hook updates schema files for ReTaSC
+  entry: retasc generate-schema schemas/v1/rule.yaml
+  language: python
+  pass_filenames: false
+  files: src/retasc/validator/models.py
