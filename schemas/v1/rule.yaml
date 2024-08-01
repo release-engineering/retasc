@@ -1,5 +1,6 @@
 $defs:
   JiraIssue:
+    description: Represents a Jira issue, which can have subtasks.
     properties:
       template:
         description: The template string for the jira issue.
