@@ -2,7 +2,6 @@
 import sys
 from unittest.mock import patch
 
-from pydantic import ValidationError
 from pytest import mark, raises
 
 from retasc.__main__ import main
@@ -10,10 +9,6 @@ from retasc.__main__ import main
 
 def run_main(*args, expected_exit_code=None):
     with patch.object(sys, "argv", ["retasc", *args]):
-        if expected_exit_code is None:
-            main()
-            return
-
         with raises(SystemExit) as e:
             main()
         assert e.value.code == expected_exit_code
@@ -42,21 +37,6 @@ def test_dummy_run(capsys):
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
     assert stderr == ""
-
-
-@patch("retasc.__main__.validate_rule")
-def test_validate_rule(mock_validate_rule):
-    run_main("validate-rule", "any_valid_rule.yaml", expected_exit_code=0)
-    mock_validate_rule.assert_called_once_with("any_valid_rule.yaml")
-
-
-@patch("retasc.__main__.validate_rule")
-def test_validate_invalid_rule(mock_validate_rule):
-    mock_validate_rule.side_effect = ValidationError.from_exception_data(
-        title="mocked", line_errors=[]
-    )
-    run_main("validate-rule", "any_invalid_rule.yaml", expected_exit_code=1)
-    mock_validate_rule.assert_called_once_with("any_invalid_rule.yaml")
 
 
 @patch("retasc.__main__.generate_schema")

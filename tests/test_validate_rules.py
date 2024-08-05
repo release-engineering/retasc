@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from copy import deepcopy
 
-import pytest
 from pydantic import ValidationError
 from pytest import raises
 
@@ -10,10 +9,7 @@ from retasc.validator.validate_rules import validate_rule
 
 
 def test_rule_valid(valid_rule_file):
-    try:
-        validate_rule(str(valid_rule_file))
-    except ValidationError:
-        assert False, "A valid rule dict should not raise ValidationError"
+    validate_rule(str(valid_rule_file))
 
 
 def test_invalid_incorrect_days_before_or_after_type(valid_rule_dict):
@@ -29,10 +25,7 @@ def test_invalid_incorrect_days_before_or_after_type(valid_rule_dict):
 def test_unexpected_fields(valid_rule_dict):
     invalid_rule = deepcopy(valid_rule_dict)
     invalid_rule["unexpected_field"] = "unexpected_value"
-    try:
-        Rule(**invalid_rule)
-    except ValidationError:
-        pytest.fail(reason="ValidationError was raised unexpectedly.")
+    Rule(**invalid_rule)
 
 
 def test_incorrect_version_types(valid_rule_dict):
