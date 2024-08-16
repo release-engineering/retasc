@@ -17,7 +17,7 @@ def init_tracing():
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
     service_name = os.getenv("OTEL_EXPORTER_SERVICE_NAME")
     if not endpoint or not service_name:
-        logger.info("Trancing not initialized")
+        logger.info("Tracing not initialized")
         return
 
     logger.info("Initializing tracing: %s", endpoint)
