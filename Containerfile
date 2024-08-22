@@ -18,7 +18,7 @@ RUN set -exo pipefail \
     && yum --installroot=/mnt/rootfs clean all \
     && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.* \
     # https://python-poetry.org/docs/master/#installing-with-the-official-installer
-    && curl -sSL https://install.python-poetry.org | python3 - \
+    && curl -sSL --proto "=https" https://install.python-poetry.org | python3 - \
     && python3 -m venv /venv
 
 ENV \
@@ -30,7 +30,18 @@ ENV \
     PYTHONUNBUFFERED=1
 
 WORKDIR /build
-COPY . .
+
+# Copy only specific files to avoid accidentally including any generated files
+# or secrets.
+COPY src ./src
+COPY container ./container
+COPY \
+    pyproject.toml \
+    poetry.lock \
+    requirements.txt \
+    README.md \
+    ./
+
 # hadolint ignore=SC1091
 RUN set -ex \
     && export PATH=/root/.local/bin:$PATH \
