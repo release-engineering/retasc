@@ -1,5 +1,6 @@
 /.coverage
 /coverage.xml
+/report.xml
 /htmlcov
 /.mypy_cache
 /.ruff_cache

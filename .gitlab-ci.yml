@@ -1,0 +1,42 @@
+---
+stages:
+  - testing
+  - sonarqube
+
+variables:
+  # SonarQube project name
+  PROJECT_NAME: "exd-guild-rhel-workflow-automation:retasc"
+  COVERAGE_XML: coverage.xml
+  JUNIT_XML: report.xml
+
+default:
+  tags:
+    - docker
+
+# code-scanning-container
+# Requires SONAR_TOKEN variable in GitLab project.
+include:
+  - project: security-guild/code-scanning-container
+    file: code_scanning-gitlab-ci.yml
+
+unittests:
+  image:
+    name: images.paas.redhat.com/exd-sp-guild-rhel-workflow-automation/gitlab-ci:latest
+  stage: testing
+  script:
+    - tox -e py3 -- --junit-xml="${JUNIT_XML}"
+  coverage: '/Total coverage: \d+\.\d+\%/'
+  artifacts:
+    paths:
+      - $COVERAGE_XML
+      - $JUNIT_XML
+    reports:
+      junit: $JUNIT_XML
+      coverage_report:
+        coverage_format: cobertura
+        path: $COVERAGE_XML
+
+sonarqube-scan-sast:
+  stage: sonarqube
+  needs:
+    - unittests
