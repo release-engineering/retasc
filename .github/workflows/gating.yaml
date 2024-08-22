@@ -24,7 +24,7 @@ jobs:
         run: python -m pip install tox
 
       - name: Test with tox
-        run: python -m tox -e py3
+        run: python -m tox -e py3 -- --junit-xml=report.xml
 
       - name: Run coveralls-python
         env:
@@ -115,3 +115,21 @@ jobs:
       - name: Assert the rule file is valid
         run: |
           grep -q "Validation succeeded: The rule file is valid" validation_output.log
+
+  sonarqube:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v2.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=exd-guild-rhel-workflow-automation:retasc
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.junit.reportsPath=report.xml
+            -Dsonar.tests=tests/
+            -Dsonar.python.version="3.12"
+            -Dsonar.verbose=true
