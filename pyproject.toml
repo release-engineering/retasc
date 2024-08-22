@@ -13,10 +13,10 @@ repository = "https://github.com/release-engineering/retasc"
 [tool.poetry.dependencies]
 python = "^3.12"
 
-opentelemetry-sdk = "^1.24.0"
-opentelemetry-instrumentation-flask = "^0.45b0"
-opentelemetry-instrumentation-requests = "^0.45b0"
-opentelemetry-exporter-otlp-proto-http = "^1.24.0"
+opentelemetry-sdk = "^1.26.0"
+opentelemetry-instrumentation-flask = "^0.47b0"
+opentelemetry-instrumentation-requests = "^0.47b0"
+opentelemetry-exporter-otlp-proto-http = "^1.26.0"
 
 requests = "^2.32.0"
 urllib3 = "^2.2.1"
