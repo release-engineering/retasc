@@ -38,7 +38,6 @@ COPY container ./container
 COPY \
     pyproject.toml \
     poetry.lock \
-    requirements.txt \
     README.md \
     ./
 
