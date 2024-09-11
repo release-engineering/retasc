@@ -43,7 +43,7 @@ COPY \
 
 # hadolint ignore=SC1091
 RUN set -ex \
-    && export PATH=/root/.local/bin:$PATH \
+    && export PATH=/root/.local/bin:"$PATH" \
     && . /venv/bin/activate \
     && poetry build --format=wheel \
     && version=$(poetry version --short) \
