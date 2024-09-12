@@ -2,7 +2,7 @@
 from pydantic import ValidationError
 from pytest import raises
 
-from retasc.validator.models import Rule
+from retasc.models.rule import Rule
 
 
 def test_invalid_incorrect_days_before_or_after_type(rule_dict):

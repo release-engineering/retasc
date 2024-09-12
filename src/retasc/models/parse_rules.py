@@ -120,11 +120,8 @@ class ParseState:
         self.errors.append(f"Invalid rule {rule.name!r} (file {filename!r}): {error}")
 
 
-def parse_rules(path: str, templates_path: str = ".") -> dict[str, Rule]:
-    """
-    Parses rules in path recursively to dict with rule name as key and the rule
-    as value.
-    """
+def parse_rules(path: str, templates_path: str = ".") -> list[Rule]:
+    """Parses rules in path recursively."""
     state = ParseState()
 
     for rule_file in iterate_yaml_files(path):
@@ -141,4 +138,4 @@ def parse_rules(path: str, templates_path: str = ".") -> dict[str, Rule]:
     if not state.rules:
         raise RuleParsingError(f"No rules found in {path!r}")
 
-    return state.rules
+    return list(state.rules.values())

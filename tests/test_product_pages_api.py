@@ -5,7 +5,7 @@ from pytest import fixture
 
 from retasc.product_pages_api import ProductPagesApi
 
-PP_URL = "https://product_pages.example.com/api/latest"
+PP_URL = "https://product_pages.example.com"
 
 
 @fixture
