@@ -45,6 +45,60 @@ def test_dummy_run(capsys):
     assert stderr == ""
 
 
+@mark.parametrize(("arg", "issue_key"), (("run", "TEST"), ("dry-run", "DRYRUN")))
+def test_run(arg, issue_key, capsys):
+    run_main(arg, expected_exit_code=0)
+    stdout, stderr = capsys.readouterr()
+    assert stderr == ""
+    expected_lines = [
+        "rhel",
+        "  rhel-10.0",
+        "    Example Rule",
+        "      Condition('major >= 10')",
+        "        result: True",
+        "      Schedule('GA for rhel {{ major }}.{{ minor }}')",
+        "      TargetDate('start_date - 7|days')",
+        "        target_date: 1989-12-25",
+        "      Rule('Dependent Rule 1')",
+        "        Schedule('TASK')",
+        "        TargetDate('start_date - 3|weeks')",
+        "          target_date: 1989-12-13",
+        "      Rule('Dependent Rule 2')",
+        "        Schedule('TASK')",
+        "        TargetDate('start_date - 2|weeks')",
+        "          target_date: 1989-12-20",
+        "      Jira('main')",
+        "        create: {'summary': 'Main Issue'}",
+        f"        issue: {issue_key}",
+        "        Subtask('add_beta_repos')",
+        "          create: {'summary': 'Add Beta Repos'}",
+        f"          issue: {issue_key}",
+        "        Subtask('notify_team')",
+        "          create: {'summary': 'Notify Team'}",
+        f"          issue: {issue_key}",
+        "        state: InProgress",
+        "      Jira('secondary')",
+        "        create: {'summary': 'Secondary Issue'}",
+        f"        issue: {issue_key}",
+        "        state: InProgress",
+        "      state: InProgress",
+        "    Dependent Rule 1",
+        "      Schedule('TASK')",
+        "      TargetDate('start_date - 3|weeks')",
+        "        target_date: 1989-12-13",
+        "      state: Completed",
+        "    Dependent Rule 2",
+        "      Schedule('TASK')",
+        "      TargetDate('start_date - 2|weeks')",
+        "        target_date: 1989-12-20",
+        "      state: Completed",
+    ]
+    actual_lines = [
+        line for line in stdout.split("\n") if line == "rhel" or line.startswith(" ")
+    ]
+    assert expected_lines == actual_lines
+
+
 def test_generate_schema_yaml(mock_generate_schema):
     run_main("generate-schema", "output_schema.yaml", expected_exit_code=0)
     mock_generate_schema.assert_called_once_with(

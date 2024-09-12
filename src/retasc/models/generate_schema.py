@@ -5,7 +5,7 @@ from typing import TextIO
 
 import yaml
 
-from retasc.validator.models import Rule
+from retasc.models.rule import Rule
 
 
 def _generate_schema(file: TextIO, generator) -> None:

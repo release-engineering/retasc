@@ -1,8 +1,11 @@
 import logging
 
 from atlassian import Jira
+from opentelemetry import trace
+from requests import Session
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class JiraClient:
@@ -10,13 +13,15 @@ class JiraClient:
     Jira Client Wrapper
     """
 
-    def __init__(self, api_url: str, token: str | None = None):
+    def __init__(self, api_url: str, *, token: str, session: Session):
         self.api_url = api_url
         self.jira = Jira(
             url=api_url,
             token=token,
+            session=session,
         )
 
+    @tracer.start_as_current_span("JiraClient.edit_issue")
     def edit_issue(
         self, issue_key: str, fields: dict, notify_users: bool = True
     ) -> None:
@@ -40,46 +45,51 @@ class JiraClient:
         logger.info("Updating Jira issue %r with fields: %r", issue_key, fields)
         self.jira.edit_issue(issue_key, fields, notify_users=notify_users)
 
-    def create_issue(
-        self,
-        project_key: str,
-        summary: str,
-        description: str,
-        issue_type: str,
-        fields: dict = {},
-    ) -> dict:
+    @tracer.start_as_current_span("JiraClient.create_issue")
+    def create_issue(self, fields: dict) -> dict:
         """
         Create a new Jira issue
         """
+        logger.info("Creating new Jira issue with fields: %r", fields)
 
-        issue_dict = {
-            "project": {"key": project_key},
-            "summary": summary,
-            "description": description,
-            "issuetype": {"name": issue_type},
-        }
+        data = self.jira.create_issue(fields)
+        if isinstance(data, dict):
+            return data
 
-        issue_dict.update(fields)
+        raise RuntimeError(f"Unexpected response: {data!r}")
 
-        logger.info("Creating new Jira issue with fields: %r", issue_dict)
-
-        issue = self.jira.create_issue(issue_dict)
-        return issue
-
-    def search_issues(self, jql: str) -> list:
+    @tracer.start_as_current_span("JiraClient.search_issues")
+    def search_issues(self, jql: str, fields: list[str] | None = None) -> list:
         """
         Search Issues by JQL
 
         :param jql: string: like "project = DEMO AND status NOT IN (Closed, Resolved) ORDER BY issuekey"
         """
 
-        issue_list = self.jira.jql_get_list_of_tickets(jql)
-        return issue_list
+        if fields:
+            return self.jira.jql_get_list_of_tickets(jql, fields=fields)
+        return self.jira.jql_get_list_of_tickets(jql)
 
+    @tracer.start_as_current_span("JiraClient.get_issues")
     def get_issue(self, issue_key: str) -> dict:
         """
         Get a Jira issue.
         """
 
-        issue = self.jira.issue(issue_key)
-        return issue
+        data = self.jira.issue(issue_key)
+        if isinstance(data, dict):
+            return data
+
+        raise RuntimeError(f"Unexpected response: {data}")
+
+
+class DryRunJiraClient(JiraClient):
+    def edit_issue(
+        self, issue_key: str, fields: dict, notify_users: bool = True
+    ) -> None:
+        # Skip modifying issues in dry-run mode.
+        pass
+
+    def create_issue(self, fields: dict) -> dict:
+        # Skip creating issues in dry-run mode and return dummy data.
+        return {"key": "DRYRUN", "fields": {"resolution": None, **fields}}

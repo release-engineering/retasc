@@ -2,15 +2,16 @@
 from datetime import date
 
 from pytest import fixture
+from requests import Session
 
-from retasc.product_pages_api import ProductPagesApi
+from retasc.product_pages_api import ProductPagesApi, ProductPagesScheduleTask
 
-PP_URL = "https://product_pages.example.com/api/latest"
+PP_URL = "https://product_pages.example.com"
 
 
 @fixture
 def pp_api():
-    return ProductPagesApi(PP_URL)
+    return ProductPagesApi(PP_URL, session=Session())
 
 
 def test_active_releases(pp_api, requests_mock):
@@ -25,12 +26,21 @@ def test_active_releases(pp_api, requests_mock):
 
 def test_release_schedules(pp_api, requests_mock):
     schedules = [
-        {"name": "task1", "date_start": "2024-10-01"},
-        {"name": "task2", "date_start": "2024-11-20"},
+        {"name": "task1", "date_start": "2024-10-01", "date_finish": "2024-10-02"},
+        {"name": "task2", "date_start": "2024-11-20", "date_finish": "2024-11-21"},
     ]
     requests_mock.get(
         f"{PP_URL}/releases/example_product/schedule-tasks",
         json=schedules,
     )
     resp = pp_api.release_schedules("example_product")
-    assert resp == {"task1": date(2024, 10, 1), "task2": date(2024, 11, 20)}
+    assert resp == {
+        "task1": ProductPagesScheduleTask(
+            start_date=date(2024, 10, 1),
+            end_date=date(2024, 10, 2),
+        ),
+        "task2": ProductPagesScheduleTask(
+            start_date=date(2024, 11, 20),
+            end_date=date(2024, 11, 21),
+        ),
+    }

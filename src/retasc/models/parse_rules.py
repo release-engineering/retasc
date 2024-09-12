@@ -2,7 +2,6 @@
 import logging
 import os
 from collections import defaultdict
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 from glob import iglob
 from itertools import chain
@@ -10,7 +9,8 @@ from itertools import chain
 import yaml
 from pydantic import ValidationError
 
-from retasc.validator.models import Rule
+from retasc.models.rule import Rule
+from retasc.utils import to_comma_separated
 
 logger = logging.getLogger(__name__)
 
@@ -34,21 +34,6 @@ def parse_yaml_objects(rule_file: str) -> list[dict]:
         if isinstance(data, list):
             return data
         return [data]
-
-
-def template_filenames(rule: Rule) -> Iterator[str]:
-    for issue in rule.jira_issues:
-        yield issue.template
-        yield from (x.template for x in issue.subtasks)
-
-
-def template_paths(rule: Rule, templates_path: str) -> Iterator[str]:
-    for file in template_filenames(rule):
-        yield f"{templates_path}/{file}"
-
-
-def to_comma_separated(items: list) -> str:
-    return ", ".join(sorted(repr(str(x)) for x in items))
 
 
 @dataclass
@@ -90,37 +75,22 @@ class ParseState:
 
     def validate_existing_dependent_rules(self) -> None:
         for rule in self.rules.values():
-            missing_rules = [
-                name
-                for name in rule.prerequisites.dependent_rules
-                if name not in self.rules
+            errors = [
+                error
+                for prereq in rule.prerequisites
+                for error in prereq.validation_errors(self.rules.values())
             ]
-            if missing_rules:
-                rules_list = to_comma_separated(missing_rules)
-                self._add_invalid_rule_error(
-                    rule, f"Dependent rules do not exist: {rules_list}"
-                )
-
-    def validate_existing_jira_templates(self, templates_path: str) -> None:
-        for rule in self.rules.values():
-            missing_files = [
-                file
-                for file in template_paths(rule, templates_path)
-                if not os.path.isfile(file)
-            ]
-            if missing_files:
-                file_list = to_comma_separated(missing_files)
-                self._add_invalid_rule_error(
-                    rule,
-                    f"Jira issue template files not found: {file_list}",
-                )
+            if errors:
+                self._add_invalid_rule_error(rule, "\n  ".join(errors))
 
     def _add_invalid_rule_error(self, rule: Rule, error: str) -> None:
         filename = self.rule_files[rule.name][0]
-        self.errors.append(f"Invalid rule {rule.name!r} (file {filename!r}): {error}")
+        self.errors.append(
+            f"Invalid rule {rule.name!r} (file {filename!r}):\n  {error}"
+        )
 
 
-def parse_rules(path: str, templates_path: str = ".") -> dict[str, Rule]:
+def parse_rules(path: str) -> dict[str, Rule]:
     """
     Parses rules in path recursively to dict with rule name as key and the rule
     as value.
@@ -132,7 +102,6 @@ def parse_rules(path: str, templates_path: str = ".") -> dict[str, Rule]:
 
     state.validate_unique_rule_names()
     state.validate_existing_dependent_rules()
-    state.validate_existing_jira_templates(templates_path)
 
     if state.errors:
         error_list = "\n".join(state.errors)

@@ -6,10 +6,11 @@ import sys
 
 from retasc import __doc__ as doc
 from retasc import __version__
+from retasc.models.generate_schema import generate_schema
+from retasc.models.parse_rules import RuleParsingError, parse_rules
 from retasc.retasc_logging import init_logging
+from retasc.run import run
 from retasc.tracing import init_tracing
-from retasc.validator.generate_schema import generate_schema
-from retasc.validator.parse_rules import RuleParsingError, parse_rules
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,14 @@ def parse_args():
         action="store_true",
     )
 
+    subparsers.add_parser(
+        "run", help="Process rules, data from Product Pages and apply changes to Jira"
+    )
+    subparsers.add_parser(
+        "dry-run",
+        help='Same as "run" but without creating, deleting or modifying any Jira issues',
+    )
+
     return parser.parse_args()
 
 
@@ -62,4 +71,7 @@ def main():
         print("Validation succeeded: The rule files are valid")
     elif args.command == "generate-schema":
         generate_schema(args.schema_file, output_json=args.json)
+    elif args.command in ("run", "dry-run"):
+        dry_run = args.command == "dry-run"
+        run(dry_run=dry_run)
     sys.exit(0)
