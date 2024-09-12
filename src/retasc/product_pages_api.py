@@ -3,6 +3,7 @@
 Production Pages API
 """
 
+from datetime import date
 from functools import cache
 
 from retasc import requests_session
@@ -24,56 +25,30 @@ class ProductPagesApi:
         return f"{self.api_url_releases(release_name)}/schedule-tasks"
 
     @cache
-    def active_releases(
-        self,
-        product_shortname: str,
-        fields: str = "shortname,product_shortname,ga_date,phase_display",
-    ) -> list[dict]:
-        """
-        https://{pp_release_url}?product__shortname={product_shortname}&phase__lt=Unsupported&fields=a,b,c
-        The response have the following fields:shortname,product_shortname,ga_date,phase_display
-        phase__lt=Unsupported means "any supported phase" (these are less than Unsupported).
-        """
-
+    def active_releases(self, product_shortname: str) -> list[str]:
+        """Gets list of active release names."""
         opt = {
             "product__shortname": product_shortname,
             "phase__lt": "Unsupported",
-            "fields": fields,
+            "fields": "shortname",
         }
         res = self.session.get(self.api_url_releases(), params=opt)
         res.raise_for_status()
-        return res.json()
+        data = res.json()
+        return [item["shortname"] for item in data]
 
     @cache
-    def release_schedules(
-        self,
-        release_short_name: str,
-        fields: str = "release_shortname,name,slug,date_start,date_finish,flags",
-        **kwargs,
-    ) -> list[dict]:
+    def release_schedules(self, release_short_name: str) -> dict[str, date]:
         """
-        https://{api_url_release_schedule_tasks}/?{kwargs...}
+        Gets schedules for given release.
+
+        :return: dict with schedule name as key and ScheduleSpan as value
         """
         url = self.api_url_release_schedule_tasks(release_short_name)
-
-        # fields has some default value, can be updated if kwargs has it
-        addtional_query = {"fields": fields, **kwargs}
-
-        res = self.session.get(url, params=addtional_query)
+        res = self.session.get(url, params={"fields": "name,date_start"})
         res.raise_for_status()
-        return res.json()
-
-    @cache
-    def active_release_schedules_for_product(self, product_shortname: str) -> dict:
-        """
-        Get all release names that are still supported by rest api:
-        https://{pp_release_url}?product__shortname={product_shortname}&phase__lt=Unsupported&fields=shortname
-        Loop through the releases and get the tasks of it by rest api
-        https://{pp_release_url}{release_short_name}/schedule-tasks/fields=name,slug,date_start,date_finish
-        """
-
-        releases_list = self.active_releases(product_shortname)
+        data = res.json()
         return {
-            r["shortname"]: self.release_schedules(r["shortname"])
-            for r in releases_list
+            item["name"]: date.fromisoformat(item["date_start"])
+            for item in data
         }

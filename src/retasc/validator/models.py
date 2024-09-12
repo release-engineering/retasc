@@ -4,11 +4,11 @@ from pydantic import BaseModel, Field
 SCHEMA_VERSION = 1
 
 
-class JiraIssue(BaseModel):
+class JiraIssueTemplate(BaseModel):
     """Represents a Jira issue, which can have subtasks."""
 
     template: str = Field(description="The template string for the jira issue.")
-    subtasks: list["JiraIssue"] = Field(
+    subtasks: list["JiraIssueTemplate"] = Field(
         default=[], description="The subtasks for the jira issue."
     )
 
@@ -16,7 +16,8 @@ class JiraIssue(BaseModel):
 class Prerequisites(BaseModel):
     """Defines the prerequisites needed for a rule."""
 
-    pp_schedule_item_name: str = Field(description="The name of the pp schedule item.")
+    pp_product: str = Field(description="The name of the PP product.", default="rhel")
+    pp_schedule_item_name: str = Field(description="The name of the PP schedule item.")
     days_before_or_after: int = Field(
         description=(
             "The number of days to adjust the schedule relative to the PP schedule item date. "
@@ -39,4 +40,6 @@ class Rule(BaseModel):
     )
     name: str = Field(description="The name of the rule.")
     prerequisites: Prerequisites = Field(description="The prerequisites for the rule.")
-    jira_issues: list[JiraIssue] = Field(description="The jira issues for the rule.")
+    jira_issues: list[JiraIssueTemplate] = Field(
+        description="The jira issues for the rule."
+    )

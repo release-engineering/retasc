@@ -4,7 +4,6 @@ from pytest import fixture
 from retasc.product_pages_api import ProductPagesApi
 
 PP_URL = "https://product_pages.example.com"
-PP_API = ProductPagesApi(PP_URL)
 TEST_PRODUCT = "rhscl"
 TEST_RELEASE = "rhscl-3-8"
 
