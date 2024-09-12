@@ -3,8 +3,8 @@ import json
 
 import yaml
 
-from retasc.validator.generate_schema import generate_schema
-from retasc.validator.models import Rule
+from retasc.models.generate_schema import generate_schema
+from retasc.models.rule import Rule
 
 
 def test_generate_json_schema(tmp_path):

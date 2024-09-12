@@ -10,9 +10,13 @@ from itertools import chain
 import yaml
 from pydantic import ValidationError
 
-from retasc.validator.models import Rule
+from retasc.models.rule import Rule
 
 logger = logging.getLogger(__name__)
+
+
+def to_comma_separated(items: list) -> str:
+    return ", ".join(sorted(repr(str(x)) for x in items))
 
 
 class RuleParsingError(RuntimeError):
@@ -45,10 +49,6 @@ def template_filenames(rule: Rule) -> Iterator[str]:
 def template_paths(rule: Rule, templates_path: str) -> Iterator[str]:
     for file in template_filenames(rule):
         yield f"{templates_path}/{file}"
-
-
-def to_comma_separated(items: list) -> str:
-    return ", ".join(sorted(repr(str(x)) for x in items))
 
 
 @dataclass
@@ -90,16 +90,13 @@ class ParseState:
 
     def validate_existing_dependent_rules(self) -> None:
         for rule in self.rules.values():
-            missing_rules = [
-                name
-                for name in rule.prerequisites.dependent_rules
-                if name not in self.rules
+            errors = [
+                error
+                for prereq in rule.prerequisites
+                for error in prereq.validation_errors(self.rules.values())
             ]
-            if missing_rules:
-                rules_list = to_comma_separated(missing_rules)
-                self._add_invalid_rule_error(
-                    rule, f"Dependent rules do not exist: {rules_list}"
-                )
+            if errors:
+                self._add_invalid_rule_error(rule, "\n  ".join(errors))
 
     def validate_existing_jira_templates(self, templates_path: str) -> None:
         for rule in self.rules.values():
@@ -117,7 +114,9 @@ class ParseState:
 
     def _add_invalid_rule_error(self, rule: Rule, error: str) -> None:
         filename = self.rule_files[rule.name][0]
-        self.errors.append(f"Invalid rule {rule.name!r} (file {filename!r}): {error}")
+        self.errors.append(
+            f"Invalid rule {rule.name!r} (file {filename!r}):\n  {error}"
+        )
 
 
 def parse_rules(path: str, templates_path: str = ".") -> dict[str, Rule]:
