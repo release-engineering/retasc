@@ -6,6 +6,8 @@ from pytest import fixture, mark, raises
 
 from retasc.__main__ import main
 
+from .common_run import mock_env, mock_jira, mock_pp  # noqa: F401
+
 
 @fixture
 def mock_generate_schema():
@@ -43,6 +45,16 @@ def test_dummy_run(capsys):
     stdout, stderr = capsys.readouterr()
     assert stdout == ""
     assert stderr == ""
+
+
+@mark.parametrize("arg", ("run", "dry-run"))
+def test_run(arg, capsys):
+    run_main(arg, expected_exit_code=0)
+    stdout, stderr = capsys.readouterr()
+    assert stderr == ""
+    assert "Rule 'Example Rule' state: InProgress" in stdout
+    assert "Rule 'Dependent Rule 1' state: Completed" in stdout
+    assert "Rule 'Dependent Rule 2' state: Completed" in stdout
 
 
 def test_generate_schema_yaml(mock_generate_schema):

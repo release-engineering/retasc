@@ -3,10 +3,17 @@
 Production Pages API
 """
 
+from dataclasses import dataclass
 from datetime import date
 from functools import cache
 
 from retasc import requests_session
+
+
+@dataclass
+class ProductPagesScheduleTask:
+    start_date: date
+    end_date: date
 
 
 class ProductPagesApi:
@@ -33,14 +40,22 @@ class ProductPagesApi:
         return [item["shortname"] for item in data]
 
     @cache
-    def release_schedules(self, release_short_name: str) -> dict[str, date]:
+    def release_schedules(
+        self, release_short_name: str
+    ) -> dict[str, ProductPagesScheduleTask]:
         """
         Gets schedules for given release.
 
         :return: dict with schedule name as key and start date as value
         """
         url = f"{self.api_url}/releases/{release_short_name}/schedule-tasks"
-        res = self.session.get(url, params={"fields": "name,date_start"})
+        res = self.session.get(url, params={"fields": "name,date_start,date_finish"})
         res.raise_for_status()
         data = res.json()
-        return {item["name"]: date.fromisoformat(item["date_start"]) for item in data}
+        return {
+            item["name"]: ProductPagesScheduleTask(
+                start_date=date.fromisoformat(item["date_start"]),
+                end_date=date.fromisoformat(item["date_finish"]),
+            )
+            for item in data
+        }

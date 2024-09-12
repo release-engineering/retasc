@@ -10,7 +10,8 @@ from itertools import chain
 import yaml
 from pydantic import ValidationError
 
-from retasc.validator.models import Rule
+from retasc.models.rule import Rule
+from retasc.utils import to_comma_separated
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +46,6 @@ def template_filenames(rule: Rule) -> Iterator[str]:
 def template_paths(rule: Rule, templates_path: str) -> Iterator[str]:
     for file in template_filenames(rule):
         yield f"{templates_path}/{file}"
-
-
-def to_comma_separated(items: list) -> str:
-    return ", ".join(sorted(repr(str(x)) for x in items))
 
 
 @dataclass
@@ -90,16 +87,9 @@ class ParseState:
 
     def validate_existing_dependent_rules(self) -> None:
         for rule in self.rules.values():
-            missing_rules = [
-                name
-                for name in rule.prerequisites.dependent_rules
-                if name not in self.rules
-            ]
-            if missing_rules:
-                rules_list = to_comma_separated(missing_rules)
-                self._add_invalid_rule_error(
-                    rule, f"Dependent rules do not exist: {rules_list}"
-                )
+            for prereq in rule.prerequisites:
+                for error in prereq.validation_errors(self.rules.values()):
+                    self._add_invalid_rule_error(rule, error)
 
     def validate_existing_jira_templates(self, templates_path: str) -> None:
         for rule in self.rules.values():

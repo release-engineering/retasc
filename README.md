@@ -38,6 +38,10 @@ Task state can be one of:
 
 Below is list of environment variables supported in the container image:
 
+- `RETASC_JIRA_URL` - Jira URL
+- `RETASC_JIRA_TOKEN` - Jira access token
+- `RETASC_RULES_PATH` - Path to rules
+- `RETASC_PP_URL` - Product Pages URL
 - `RETASC_LOGGING_CONFIG` - Path to JSON file with the logging configuration;
   see details in [Configuration dictionary
   schema](https://docs.python.org/3/library/logging.config.html#logging-config-dictschema)

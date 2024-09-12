@@ -4,7 +4,7 @@ import re
 import yaml
 from pytest import mark, raises
 
-from retasc.validator.parse_rules import RuleParsingError, parse_rules
+from retasc.models.parse_rules import RuleParsingError, parse_rules
 
 JIRA_TEMPLATES = [
     "main.yaml",
@@ -15,39 +15,43 @@ JIRA_TEMPLATES = [
 RULE_DATA = {
     "version": 1,
     "name": "Example Rule",
-    "prerequisites": {
-        "pp_schedule_item_name": "Release Date",
-        "days_before_or_after": 5,
-        "dependent_rules": ["Dependent Rule 1", "Dependent Rule 2"],
-    },
+    "prerequisites": [
+        {"schedule_task": "Release Date", "days_before_or_after": 5},
+        {"rules": ["Dependent Rule 1", "Dependent Rule 2"]},
+    ],
     "jira_issues": [
         {
+            "id": "main",
             "template": "main.yaml",
             "subtasks": [
-                {"template": "subtask1.yaml"},
-                {"template": "subtask2.yaml"},
+                {"id": "main1", "template": "subtask1.yaml"},
+                {"id": "main2", "template": "subtask2.yaml"},
             ],
         },
-        {"template": "secondary.yaml"},
+        {"id": "secondary", "template": "secondary.yaml"},
     ],
 }
 DEPENDENT_RULES_DATA = [
     {
         "version": 1,
         "name": "Dependent Rule 1",
-        "prerequisites": {
-            "pp_schedule_item_name": "Release Date",
-            "days_before_or_after": -14,
-        },
+        "prerequisites": [
+            {
+                "schedule_task": "Release Date",
+                "days_before_or_after": -14,
+            }
+        ],
         "jira_issues": [],
     },
     {
         "version": 1,
         "name": "Dependent Rule 2",
-        "prerequisites": {
-            "pp_schedule_item_name": "Release Date",
-            "days_before_or_after": -7,
-        },
+        "prerequisites": [
+            {
+                "schedule_task": "Release Date",
+                "days_before_or_after": -7,
+            }
+        ],
         "jira_issues": [],
     },
 ]
