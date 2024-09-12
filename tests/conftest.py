@@ -1,39 +1,90 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+from datetime import date
+from unittest.mock import ANY, patch
 
-import pytest
 import yaml
+from pytest import fixture
+
+from retasc.product_pages_api import ProductPagesScheduleTask
 
 
-@pytest.fixture
+@fixture
 def rule_dict():
     return {
         "version": 1,
         "name": "Example Rule",
-        "prerequisites": {
-            "pp_schedule_item_name": "Release Date",
-            "days_before_or_after": 5,
-        },
-        "jira_issues": [],
+        "prerequisites": [
+            {"schedule_task": "GA for rhel {{ major }}.{{ minor }}"},
+            {"condition": "today >= start_date + 5|days"},
+        ],
     }
 
 
-@pytest.fixture
+@fixture
 def rule_path(tmp_path):
     path = tmp_path / "rules"
     path.mkdir()
     yield path
 
 
-@pytest.fixture
+@fixture
 def valid_rule_file(rule_path, rule_dict):
     file = rule_path / "rule.yaml"
     file.write_text(yaml.dump(rule_dict, sort_keys=False))
     yield str(file)
 
 
-@pytest.fixture
+@fixture
 def invalid_rule_file(rule_path, rule_dict):
     del rule_dict["version"]
     file = rule_path / "rule.yaml"
     file.write_text(yaml.dump(rule_dict, sort_keys=False))
     yield str(file)
+
+
+@fixture(autouse=True)
+def mock_env(monkeypatch):
+    monkeypatch.setenv("RETASC_JIRA_URL", "")
+    monkeypatch.setenv("RETASC_JIRA_TOKEN", "")
+    monkeypatch.setenv("RETASC_PP_URL", "")
+    monkeypatch.setenv("RETASC_RULES_PATH", "examples/rules")
+
+
+def mock_jira_cls(cls: str, new_issue_key: str):
+    with patch(cls, autospec=True) as mock_cls:
+        mock = mock_cls(ANY, token=ANY, session=ANY)
+        mock.search_issues.return_value = []
+
+        def mock_create_issue(fields):
+            return {"key": new_issue_key, "fields": {"resolution": None, **fields}}
+
+        mock.create_issue.side_effect = mock_create_issue
+        yield mock
+
+
+@fixture(autouse=True)
+def mock_jira():
+    yield from mock_jira_cls("retasc.run.JiraClient", "TEST")
+
+
+@fixture(autouse=True)
+def mock_dryrun_jira():
+    yield from mock_jira_cls("retasc.run.DryRunJiraClient", "DRYRUN")
+
+
+@fixture(autouse=True)
+def mock_pp():
+    with patch("retasc.run.ProductPagesApi", autospec=True) as mock_cls:
+        mock = mock_cls(ANY, session=ANY)
+        mock.active_releases.return_value = ["rhel-10.0"]
+        mock.release_schedules.return_value = {
+            "GA for rhel 10.0": ProductPagesScheduleTask(
+                start_date=date(1990, 1, 1),
+                end_date=date(1990, 1, 2),
+            ),
+            "TASK": ProductPagesScheduleTask(
+                start_date=date(1990, 1, 3),
+                end_date=date(1990, 1, 4),
+            ),
+        }
+        yield mock

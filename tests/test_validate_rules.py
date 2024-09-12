@@ -1,15 +1,31 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+from unittest.mock import Mock
+
 from pydantic import ValidationError
 from pytest import raises
 
-from retasc.validator.models import Rule
+from retasc.models.prerequisites.base import PrerequisiteBase
+from retasc.models.rule import Rule
 
 
-def test_invalid_incorrect_days_before_or_after_type(rule_dict):
-    expected_error = r"days_before_or_after\s*Input should be a valid integer"
-    rule_dict["prerequisites"]["days_before_or_after"] = "invalid_type"
+def test_prerequisite_base():
+    base = PrerequisiteBase()
+    assert base.validation_errors([]) == []
+    with raises(NotImplementedError):
+        base.update_state(Mock())
+    with raises(NotImplementedError):
+        base.section_name()
 
-    with raises(ValidationError, match=expected_error):
+
+def test_invalid_prerequisite_type(rule_dict):
+    rule_dict["prerequisites"].append(1)
+    with raises(ValidationError, match="should be a valid dictionary"):
+        Rule(**rule_dict)
+
+
+def test_invalid_prerequisite_dict_key(rule_dict):
+    rule_dict["prerequisites"].append({"test": "test"})
+    with raises(ValidationError, match="Field required"):
         Rule(**rule_dict)
 
 

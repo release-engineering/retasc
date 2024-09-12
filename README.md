@@ -10,26 +10,30 @@ Product Pages (PP).
 ReTaSC is meant to run as a batch job regularly to monitor schedules in PP and
 create or update Jira issues according to custom rules and Jira templates.
 
-ReTaSC manages the Jira issues it creates until resolved. This means that if a
-PP schedule or a rule changes, the related unresolved Jira issues are also
-updated or even closed.
+ReTaSC creates and manages Jira issues until resolved. This means that if a PP
+schedule or a rule changes, the related unresolved Jira issues are also updated
+or even closed.
 
-## Tasks and Rules
+## Tasks, Rules and Prerequisites
 
 Tasks are objects managed by ReTaSC. Each Task is related to a specific Rule
 and a Product Release (an identifier in PP).
 
-Rules describe how to manage related tasks using:
+Rules describe prerequisites to manage a Product Release.
 
-- Prerequisites - PP schedule item name with number of days before/after the
-  date, and list of other dependent Rules
+Prerequisites are requirements that enhance template parameters and can block
+Task completion if some conditions are not met. Here are some pre-defined
+prerequisites:
+
+- PP schedule item name, for example:
+  `schedule_task: "GA for rhel {{ major }}.{{ minor }}"`
+- a target date, for example: `target_date: "start_date - 3|weeks"`
+- a condition, for example: `condition: "major >= 10"`
+- reference to other Rule that must be completed
 - Jira issue templates
-- Definition of Done (DoD) - currently, the only supported DoD is: "related
-  Jira issues have been resolved"
 
 Task state can be one of:
 
-- Missing (PP schedule is not defined yet)
 - Pending (some prerequisites and not satisfied)
 - In-progress (prerequisites are satisfied and DoD is not)
 - Completed (prerequisites and DoD is satisfied)
@@ -38,6 +42,10 @@ Task state can be one of:
 
 Below is list of environment variables supported in the container image:
 
+- `RETASC_JIRA_URL` - Jira URL
+- `RETASC_JIRA_TOKEN` - Jira access token
+- `RETASC_RULES_PATH` - Path to rules
+- `RETASC_PP_URL` - Product Pages URL
 - `RETASC_LOGGING_CONFIG` - Path to JSON file with the logging configuration;
   see details in [Configuration dictionary
   schema](https://docs.python.org/3/library/logging.config.html#logging-config-dictschema)

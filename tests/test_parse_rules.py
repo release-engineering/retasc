@@ -2,9 +2,9 @@
 import re
 
 import yaml
-from pytest import mark, raises
+from pytest import fixture, mark, raises
 
-from retasc.validator.parse_rules import RuleParsingError, parse_rules
+from retasc.models.parse_rules import RuleParsingError, parse_rules
 
 JIRA_TEMPLATES = [
     "main.yaml",
@@ -15,42 +15,46 @@ JIRA_TEMPLATES = [
 RULE_DATA = {
     "version": 1,
     "name": "Example Rule",
-    "prerequisites": {
-        "pp_schedule_item_name": "Release Date",
-        "days_before_or_after": 5,
-        "dependent_rules": ["Dependent Rule 1", "Dependent Rule 2"],
-    },
-    "jira_issues": [
+    "prerequisites": [
+        {"schedule_task": "TASK"},
+        {"condition": "today >= start_date + 5|days"},
+        {"rule": "Dependent Rule 1"},
+        {"rule": "Dependent Rule 2"},
         {
+            "jira_issue_id": "main",
             "template": "main.yaml",
             "subtasks": [
-                {"template": "subtask1.yaml"},
-                {"template": "subtask2.yaml"},
+                {"id": "main1", "template": "subtask1.yaml"},
+                {"id": "main2", "template": "subtask2.yaml"},
             ],
         },
-        {"template": "secondary.yaml"},
+        {"jira_issue_id": "secondary", "template": "secondary.yaml"},
     ],
 }
 DEPENDENT_RULES_DATA = [
     {
         "version": 1,
         "name": "Dependent Rule 1",
-        "prerequisites": {
-            "pp_schedule_item_name": "Release Date",
-            "days_before_or_after": -14,
-        },
-        "jira_issues": [],
+        "prerequisites": [
+            {"schedule_task": "TASK"},
+            {"condition": "today >= start_date - 2|weeks"},
+        ],
     },
     {
         "version": 1,
         "name": "Dependent Rule 2",
-        "prerequisites": {
-            "pp_schedule_item_name": "Release Date",
-            "days_before_or_after": -7,
-        },
-        "jira_issues": [],
+        "prerequisites": [
+            {"schedule_task": "TASK"},
+            {"condition": "today >= start_date - 1|weeks"},
+        ],
     },
 ]
+
+
+@fixture
+def templates_root(tmp_path, monkeypatch):
+    monkeypatch.setenv("RETASC_JIRA_TEMPLATES_ROOT", str(tmp_path))
+    yield tmp_path
 
 
 def create_jira_templates(path):
@@ -74,12 +78,12 @@ def test_parse_rule_valid_simple(rule_path):
     parse_rules(str(rule_path / "other_rules.yml"))
 
 
-def test_parse_rule_valid(tmp_path, rule_path):
+def test_parse_rule_valid(templates_root, rule_path):
     file = rule_path / "rule.yaml"
     file.write_text(yaml.dump(RULE_DATA))
     create_dependent_rules(rule_path)
-    create_jira_templates(tmp_path)
-    parse_rules(str(rule_path), templates_path=tmp_path)
+    create_jira_templates(templates_root)
+    parse_rules(str(rule_path))
 
 
 def test_parse_rule_invalid(invalid_rule_file):
@@ -87,32 +91,62 @@ def test_parse_rule_invalid(invalid_rule_file):
         parse_rules(invalid_rule_file)
 
 
-def test_parse_rule_missing_dependent_rules(tmp_path, rule_path):
+def test_parse_rule_missing_dependent_rules(templates_root, rule_path):
     file = rule_path / "rule.yaml"
     file.write_text(yaml.dump(RULE_DATA))
-    create_jira_templates(tmp_path)
+    create_jira_templates(templates_root)
     expected_error = re.escape(
-        f"Invalid rule 'Example Rule' (file {str(file)!r}): "
-        "Dependent rules do not exist: 'Dependent Rule 1', 'Dependent Rule 2'"
+        f"Invalid rule 'Example Rule' (file {str(file)!r}):"
+        "\n  Dependent rule does not exist: 'Dependent Rule 1'"
+        "\n  Dependent rule does not exist: 'Dependent Rule 2'"
     )
     with raises(RuleParsingError, match=expected_error):
-        parse_rules(str(rule_path), templates_path=tmp_path)
+        parse_rules(str(rule_path))
 
 
-def test_parse_rule_missing_jira_templates(rule_path, tmp_path):
+def test_parse_rule_missing_jira_templates(rule_path, templates_root):
     file = rule_path / "rule.yaml"
     file.write_text(yaml.dump(RULE_DATA, sort_keys=False))
     create_dependent_rules(rule_path)
     expected_error = (
         re.escape(
-            f"Invalid rule 'Example Rule' (file {str(file)!r}): "
-            "Jira issue template files not found: "
+            f"Invalid rule 'Example Rule' (file {str(file)!r}):"
+            "\n  Jira issue template files not found: "
         )
         + "[^\n]*"
-        + re.escape(repr(str(tmp_path / "main.yaml")))
+        + re.escape(repr(str(templates_root / "main.yaml")))
     )
     with raises(RuleParsingError, match=expected_error):
-        parse_rules(str(rule_path), templates_path=tmp_path)
+        parse_rules(str(rule_path))
+
+
+def test_parse_rule_duplicate_jira_ids(rule_path, templates_root):
+    file = rule_path / "rule.yaml"
+    rule2 = {
+        "version": 1,
+        "name": "Example Rule 2",
+        "prerequisites": [
+            {
+                "jira_issue_id": "main",
+                "template": "main.yaml",
+                "subtasks": [
+                    {"id": "main1", "template": "subtask1.yaml"},
+                ],
+            },
+            {"jira_issue_id": "secondary", "template": "secondary.yaml"},
+        ],
+    }
+    rules_data = [RULE_DATA, rule2]
+    file.write_text(yaml.dump(rules_data))
+    create_dependent_rules(rule_path)
+    create_jira_templates(templates_root)
+    expected_error = re.escape(
+        f"Invalid rule 'Example Rule 2' (file {str(file)!r}):"
+        "\n  Jira issue ID(s) already used elsewhere: 'main', 'main1'"
+        "\n  Jira issue ID(s) already used elsewhere: 'secondary'"
+    )
+    with raises(RuleParsingError, match=expected_error):
+        parse_rules(str(rule_path))
 
 
 def test_parse_rule_duplicate_name(rule_path, rule_dict):
