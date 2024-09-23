@@ -1,0 +1,28 @@
+- version: 1
+  name: "Example Rule"
+  prerequisites:
+    pp_schedule_item_name: "Release Date"
+    days_before_or_after: -7
+    dependent_rules:
+      - "Dependent Rule 1"
+      - "Dependent Rule 2"
+  jira_issues:
+    - template: "examples/jira/main.yaml"
+      subtasks:
+        - template: "examples/jira/add_beta_repos.yaml"
+        - template: "examples/jira/notify_team.yaml"
+    - template: "examples/jira/secondary.yaml"
+
+- version: 1
+  name: "Dependent Rule 1"
+  prerequisites:
+    pp_schedule_item_name: "Release Date"
+    days_before_or_after: -21
+  jira_issues: []
+
+- version: 1
+  name: "Dependent Rule 2"
+  prerequisites:
+    pp_schedule_item_name: "Release Date"
+    days_before_or_after: -14
+  jira_issues: []

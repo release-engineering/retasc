@@ -67,15 +67,16 @@ def test_generate_schema_json_to_stdout(mock_generate_schema):
     mock_generate_schema.assert_called_once_with(None, output_json=True)
 
 
-def test_validate_rule_output(valid_rule_file, capsys):
-    run_main("validate-rule", valid_rule_file, expected_exit_code=0)
+def test_validate_rules_output(valid_rule_file, capsys):
+    run_main("validate-rules", valid_rule_file, expected_exit_code=0)
     stdout, stderr = capsys.readouterr()
-    assert "Validation succeeded: The rule file is valid" in stdout
+    assert "Validation succeeded: The rule files are valid" in stdout
     assert stderr == ""
 
 
 def test_validate_invalid_rule_output(invalid_rule_file, capsys):
-    run_main("validate-rule", invalid_rule_file, expected_exit_code=1)
+    run_main("validate-rules", invalid_rule_file, expected_exit_code=1)
     stdout, stderr = capsys.readouterr()
-    assert "Validation failed: The rule file is invalid" in stdout
+    assert "Validation failed: " in stdout
+    assert "Invalid rule file" in stdout
     assert stderr == ""
