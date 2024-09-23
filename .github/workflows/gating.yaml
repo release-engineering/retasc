@@ -91,8 +91,8 @@ jobs:
           ignore: DL3041
           failure-threshold: warning
 
-  validate-rule:
-    name: Validate Rule
+  validate-rules:
+    name: Validate Rules
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -110,8 +110,8 @@ jobs:
 
       - name: Validate rule file
         run: |
-          poetry run retasc validate-rule src/retasc/validator/example_rule.yaml | tee validation_output.log
+          poetry run retasc validate-rules examples/rules | tee validation_output.log
 
       - name: Assert the rule file is valid
         run: |
-          grep -q "Validation succeeded: The rule file is valid" validation_output.log
+          grep -q "Validation succeeded" validation_output.log

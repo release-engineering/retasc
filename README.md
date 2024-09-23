@@ -52,10 +52,14 @@ Below is list of environment variables supported in the container image:
 The ReTaSC project includes a validator to ensure that rule files are correctly
 formatted and adhere to the expected schema (see the section below).
 
-Example of validating a rule file with CLI:
+Example of validating rule files with CLI:
 
 ```
-retasc validate-rule example_rule.yaml
+# validate all rules in a path recursively
+retasc validate-rules examples/rules
+
+# or validate single file
+retasc validate-rules examples/rules/rules.yaml
 ```
 
 ## Generate Rule Schema

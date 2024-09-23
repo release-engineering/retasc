@@ -4,14 +4,12 @@ import argparse
 import logging
 import sys
 
-from pydantic import ValidationError
-
 from retasc import __doc__ as doc
 from retasc import __version__
 from retasc.retasc_logging import init_logging
 from retasc.tracing import init_tracing
 from retasc.validator.generate_schema import generate_schema
-from retasc.validator.validate_rules import validate_rule
+from retasc.validator.parse_rules import RuleParsingError, parse_rules
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +23,10 @@ def parse_args():
     subparsers = parser.add_subparsers(dest="command")
 
     validate_parser = subparsers.add_parser(
-        "validate-rule", help="Validate a rule file"
+        "validate-rules", help="Validate a rule file"
     )
     validate_parser.add_argument(
-        "rule_file", type=str, help="Path to the rule file to validate"
+        "rule_file", type=str, help="Path to the rule file or directory to validate"
     )
 
     generate_parser = subparsers.add_parser(
@@ -55,13 +53,13 @@ def main():
     init_logging()
     init_tracing()
 
-    if args.command == "validate-rule":
+    if args.command == "validate-rules":
         try:
-            validate_rule(args.rule_file)
-            print("Validation succeeded: The rule file is valid")
-        except ValidationError as e:
-            print(f"Validation failed: The rule file is invalid: {e}")
+            parse_rules(args.rule_file)
+        except RuleParsingError as e:
+            print(f"Validation failed: {e}")
             sys.exit(1)
+        print("Validation succeeded: The rule files are valid")
     elif args.command == "generate-schema":
         generate_schema(args.schema_file, output_json=args.json)
     sys.exit(0)
