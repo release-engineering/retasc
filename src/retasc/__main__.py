@@ -31,9 +31,20 @@ def parse_args():
         "rule_file", type=str, help="Path to the rule file to validate"
     )
 
-    generate_parser = subparsers.add_parser("generate-schema", help="Generate a schema")
+    generate_parser = subparsers.add_parser(
+        "generate-schema", help="Generate YAML or JSON schema"
+    )
     generate_parser.add_argument(
-        "schema_file", type=str, help="Output schema file to generate"
+        "schema_file",
+        type=str,
+        nargs="?",
+        help="Output schema YAML or JSON file to generate (default is stdout)",
+    )
+    generate_parser.add_argument(
+        "-j",
+        "--json",
+        help="Generate JSON instead of the default YAML",
+        action="store_true",
     )
 
     return parser.parse_args()
@@ -52,5 +63,5 @@ def main():
             print(f"Validation failed: The rule file is invalid: {e}")
             sys.exit(1)
     elif args.command == "generate-schema":
-        generate_schema(args.schema_file)
+        generate_schema(args.schema_file, output_json=args.json)
     sys.exit(0)
