@@ -2,9 +2,15 @@
 import sys
 from unittest.mock import patch
 
-from pytest import mark, raises
+from pytest import fixture, mark, raises
 
 from retasc.__main__ import main
+
+
+@fixture
+def mock_generate_schema():
+    with patch("retasc.__main__.generate_schema") as mock:
+        yield mock
 
 
 def run_main(*args, expected_exit_code=None):
@@ -39,10 +45,26 @@ def test_dummy_run(capsys):
     assert stderr == ""
 
 
-@patch("retasc.__main__.generate_schema")
-def test_generate_schema(mock_generate_schema):
-    run_main("generate-schema", "output_schema.json", expected_exit_code=0)
-    mock_generate_schema.assert_called_once_with("output_schema.json")
+def test_generate_schema_yaml(mock_generate_schema):
+    run_main("generate-schema", "output_schema.yaml", expected_exit_code=0)
+    mock_generate_schema.assert_called_once_with(
+        "output_schema.yaml", output_json=False
+    )
+
+
+def test_generate_schema_yaml_to_stdout(mock_generate_schema):
+    run_main("generate-schema", expected_exit_code=0)
+    mock_generate_schema.assert_called_once_with(None, output_json=False)
+
+
+def test_generate_schema_json(mock_generate_schema):
+    run_main("generate-schema", "--json", "output_schema.json", expected_exit_code=0)
+    mock_generate_schema.assert_called_once_with("output_schema.json", output_json=True)
+
+
+def test_generate_schema_json_to_stdout(mock_generate_schema):
+    run_main("generate-schema", "--json", expected_exit_code=0)
+    mock_generate_schema.assert_called_once_with(None, output_json=True)
 
 
 def test_validate_rule_output(valid_rule_file, capsys):
