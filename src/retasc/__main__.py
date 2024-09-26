@@ -21,7 +21,9 @@ def parse_args():
     )
 
     parser.add_argument("--jira-url", action="store", help="Jira API URL")
-    parser.add_argument("--jira-token", action="store", help="Jira authentication token")
+    parser.add_argument(
+        "--jira-token", action="store", help="Jira authentication token"
+    )
 
     subparsers = parser.add_subparsers(dest="command")
 
