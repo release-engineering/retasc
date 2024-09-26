@@ -17,7 +17,6 @@ class JiraClient:
             token=token,
         )
 
-
     def api_url_issue(self, issue_key: str | None = None) -> str:
         return f"{self.api_url.rstrip('/')}/rest/api/2/issue/{issue_key or ''}"
 
@@ -25,7 +24,9 @@ class JiraClient:
         return f"{self.api_url.rstrip('/')}/rest/api/2/issue?updateHistory=false"
 
     def api_url_edit_issue(self, issue_key: str) -> str:
-        return f"{self.api_url.rstrip('/')}/rest/api/2/issue/{issue_key}?notifyUsers=true"
+        return (
+            f"{self.api_url.rstrip('/')}/rest/api/2/issue/{issue_key}?notifyUsers=true"
+        )
 
     def edit_issue(self, issue_key: str, fields: dict) -> None:
         """
