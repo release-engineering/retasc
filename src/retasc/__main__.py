@@ -20,11 +20,6 @@ def parse_args():
         "-v", "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
-    parser.add_argument("--jira-url", action="store", help="Jira API URL")
-    parser.add_argument(
-        "--jira-token", action="store", help="Jira authentication token"
-    )
-
     subparsers = parser.add_subparsers(dest="command")
 
     validate_parser = subparsers.add_parser(
