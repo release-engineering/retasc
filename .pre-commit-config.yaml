@@ -73,3 +73,9 @@ repos:
     rev: v2.3.0
     hooks:
       - id: codespell
+
+  # renovate.json validator
+  - repo: https://github.com/renovatebot/pre-commit-hooks
+    rev: 38.110.2
+    hooks:
+      - id: renovate-config-validator
