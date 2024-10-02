@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>konflux-ci/mintmaker//config/renovate/renovate.json",
+    "group:all",
+    "schedule:weekly"
+  ],
+  "dockerfile": {
+    "fileMatch": ["Containerfile"]
+  },
+  "packageRules": [
+    {
+      "description": "Patch and digest updates",
+      "matchUpdateTypes": [
+        "patch",
+        "digest"
+      ],
+      "groupName": "Auto merged updates",
+      "automerge": true,
+      "platformAutomerge": true
+    }
+  ],
+  "configMigration": true
+}
