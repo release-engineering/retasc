@@ -19,13 +19,13 @@ opentelemetry-instrumentation-requests = "^0.47b0"
 opentelemetry-exporter-otlp-proto-http = "^1.26.0"
 
 requests = "^2.32.0"
-urllib3 = "^2.2.1"
-pydantic = "^2.8.2"
+urllib3 = "^2.2.3"
+pydantic = "^2.9.2"
 pyyaml = "^6.0.1"
 
 [tool.poetry.group.dev.dependencies]
 requests-mock = "^1.12.1"
-pytest = "^8.3.2"
+pytest = "^8.3.3"
 pytest-cov = "^5.0.0"
 
 [tool.poetry.scripts]
