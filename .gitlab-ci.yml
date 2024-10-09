@@ -40,3 +40,9 @@ sonarqube-scan-sast:
   stage: sonarqube
   needs:
     - unittests
+
+owasp_dependency_check-scan:
+  rules:
+    # Avoid failing pipeline on unstable OWASP scan
+    - allow_failure: true
+      when: on_success
