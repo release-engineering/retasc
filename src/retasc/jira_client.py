@@ -17,20 +17,6 @@ class JiraClient:
             token=token,
         )
 
-    def api_url_issue(self, issue_key: str | None = None) -> str:
-        return f"{self.api_url.rstrip('/')}/rest/api/2/issue/{issue_key or ''}"
-
-    def api_url_create_issue(self) -> str:
-        # The "?updateHistory=false" is the default url for jira.create_issue to connect
-        # with JIRA and the retasc will not use the way of updateHistory=ture at all
-        return f"{self.api_url.rstrip('/')}/rest/api/2/issue?updateHistory=false"
-
-    def api_url_edit_issue(self, issue_key: str, notify_users: bool = True) -> str:
-        return f"{self.api_url.rstrip('/')}/rest/api/2/issue/{issue_key}?notifyUsers={notify_users}"
-
-    def api_url_search_issue(self) -> str:
-        return f"{self.api_url.rstrip('/')}/rest/api/2/search?startAt=0&fields=%2Aall&jql=project+%3D+TEST"
-
     def edit_issue(self, issue_key: str, fields: dict, notify_users: bool = True) -> None:
         """
         Updates a Jira issue with the provided fields.
@@ -78,14 +64,14 @@ class JiraClient:
         issue = self.jira.create_issue(issue_dict)
         return issue
 
-    def search_issue(self, JQL: str) -> list:
+    def search_issue(self, jql: str) -> list:
         """
         Search Issues by JQL
 
-        :param JQL: string: like "project = DEMO AND status NOT IN (Closed, Resolved) ORDER BY issuekey"
+        :param jql: string: like "project = DEMO AND status NOT IN (Closed, Resolved) ORDER BY issuekey"
         """
 
-        issue_list = self.jira.jql(JQL)
+        issue_list = self.jira.jql(jql)
         return issue_list
 
     def get_issue(self, issue_key: str) -> dict:
