@@ -17,7 +17,9 @@ class JiraClient:
             token=token,
         )
 
-    def edit_issue(self, issue_key: str, fields: dict, notify_users: bool = True) -> None:
+    def edit_issue(
+        self, issue_key: str, fields: dict, notify_users: bool = True
+    ) -> None:
         """
         Updates a Jira issue with the provided fields.
 
