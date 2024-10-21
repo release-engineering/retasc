@@ -64,14 +64,14 @@ class JiraClient:
         issue = self.jira.create_issue(issue_dict)
         return issue
 
-    def search_issue(self, jql: str) -> list:
+    def search_issues(self, jql: str) -> list:
         """
         Search Issues by JQL
 
         :param jql: string: like "project = DEMO AND status NOT IN (Closed, Resolved) ORDER BY issuekey"
         """
 
-        issue_list = self.jira.jql(jql)
+        issue_list = self.jira.jql_get_list_of_tickets(jql)
         return issue_list
 
     def get_issue(self, issue_key: str) -> dict:
