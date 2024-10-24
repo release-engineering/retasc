@@ -21,7 +21,7 @@ ISSUE_TYPE = "Story"
 TEST_RES = {"id": "1", "key": "TEST-1"}
 
 JQL = "project = TEST"
-SEARCH_LIST = {"issues": [{"id": "10000", "key": "TEST-1"}]}
+SEARCH_LIST = {"issues": [{"id": "10000", "key": "TEST-1"}], "total": 1}
 
 
 @fixture
@@ -53,11 +53,10 @@ def test_get_issue(jira_api, requests_mock):
     assert resp["key"] == "TEST-1"
 
 
-def test_search_issue(jira_api, requests_mock):
+def test_search_issues(jira_api, requests_mock):
     requests_mock.get(
         f"{JIRA_URL}/rest/api/2/search?startAt=0&fields=%2Aall&jql=project+%3D+{PROJECT_KEY}",
         json=SEARCH_LIST,
     )
-    resp = jira_api.search_issue(JQL)
-    assert resp["issues"][0]["id"] == "10000"
-    assert resp["issues"][0]["key"] == "TEST-1"
+    issues = jira_api.search_issues(JQL)
+    assert issues[0] == {"id": "10000", "key": "TEST-1"}
