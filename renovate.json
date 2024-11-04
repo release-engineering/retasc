@@ -12,10 +12,12 @@
     {
       "description": "Patch and digest updates",
       "matchUpdateTypes": [
+        "major",
+        "minor",
         "patch",
         "digest"
       ],
-      "groupName": "Auto merged updates",
+      "groupName": "all dependencies",
       "automerge": true,
       "platformAutomerge": true
     }
