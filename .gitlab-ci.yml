@@ -21,9 +21,10 @@ include:
 
 unittests:
   image:
-    name: images.paas.redhat.com/exd-sp-guild-rhel-workflow-automation/gitlab-ci:latest
+    name: quay.io/fedora/python-313:latest
   stage: testing
   script:
+    - pip install tox
     - tox -e py3 -- --junit-xml="${JUNIT_XML}"
   coverage: '/Total coverage: \d+\.\d+\%/'
   artifacts:
