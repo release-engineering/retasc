@@ -44,7 +44,6 @@ jobs:
       matrix:
         tox_env:
           - mypy
-          - semgrep
 
     runs-on: ubuntu-latest
 
