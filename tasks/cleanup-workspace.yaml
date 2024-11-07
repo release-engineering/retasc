@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: cleanup
+spec:
+  params:
+    - name: subdirectory
+    - name: pipelineRunUid
+  steps:
+    - name: cleanup
+      image: quay.io/redhat-appstudio/release-service-utils
+      script: |
+        set -eux
+
+        echo "simulate clean up!!!"
+      workingDir: $(workspaces.data.path)
+  workspaces:
+    - name: data

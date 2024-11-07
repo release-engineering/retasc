@@ -1,0 +1,144 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: push-image
+spec:
+  params:
+    - name: snapshotPath
+    - name: dataPath
+    # - name: env
+    - name: pushSecret
+  steps:
+    - name: push-image
+      image: quay.io/chuang/release-service-utils
+      script: |
+        set -eux
+
+        import_command="koji -p brew-stage"
+
+        SNAPSHOT_SPEC_FILE="$(workspaces.data.path)/$(params.snapshotPath)/snapshot_spec.json"
+        if [ ! -f "${SNAPSHOT_SPEC_FILE}" ] ; then
+            echo "No valid snapshot file was provided."
+            exit 1
+        fi
+
+        DATA_FILE="$(workspaces.data.path)/$(params.dataPath)/data.json"
+        if [ ! -f "${DATA_FILE}" ] ; then
+            echo "No data JSON was provided."
+            exit 1
+        fi
+
+        # TODO: Get the RPA file once it has permission
+        # RPA_FILE="$(workspaces.data.path)/$(params.dataPath)/release_plan_admission.json"
+        # if [ ! -f "${RPA_FILE}" ] ; then
+        #     echo "No data JSON was provided."
+        #     exit 1
+        # fi
+
+        APPLICATION=$(jq -r '.application' "${SNAPSHOT_SPEC_FILE}")
+        NUM_COMPONENTS=$(jq '.components | length' "${SNAPSHOT_SPEC_FILE}")
+
+        # TODO: pushOptions data should be fetched from RPA's components finally
+        # TODO: add two level's check for brew_tags from the RPA top level and the component level
+        #       and use the component level cover the top level
+        PRINCIPLE=$(jq -r '.pushOptions.pushKeytab.principle' "${DATA_FILE}")
+        PRINCIPLE=$(jq -r '.pushOptions.pushKeytab.principle' "${DATA_FILE}")
+        KEYTAB_FILE=$(jq -r '.pushOptions.pushKeytab.name' "${DATA_FILE}")
+        BREW_ENV=$(jq -r '.pushOptions.brew_env' "${DATA_FILE}")
+        BREW_TAGS=$(jq -r '.pushOptions.brew_tags  | join(" ")' "${DATA_FILE}")
+
+        # TODO: fetch from the RPA
+        if [ "$BREW_ENV" == "prod" ]; then
+            RPA_COMPONENTS=("libecpg")
+        else
+            RPA_COMPONENTS=("libecpg-playground")
+        fi
+
+        if [ "$BREW_ENV" == "prod" ]; then
+            import_command="koji -p brew"
+        fi
+
+        kinit -kt /tmp/quay/$KEYTAB_FILE $PRINCIPLE
+        $import_command hello
+
+        printf 'Start task "%s" for Application "%s"\n\n' "$(context.task.name)" "$APPLICATION"
+
+        for ((i = 0; i < $NUM_COMPONENTS; i++))
+        do
+          component=$(jq -c --argjson i "$i" '.components[$i]' "${SNAPSHOT_SPEC_FILE}")
+          containerImage=$(jq -r '.containerImage' <<< $component)
+          componentName=$(jq -r '.name' <<< $component)
+
+          # Use printf to join the array elements and grep to check for the presence of the variable
+          if ! printf "%s\n" "${RPA_COMPONENTS[@]}" | grep -q -x "$componentName"; then
+              printf "Skip the component %s as RPA doesn't have it." "$componentName"
+              continue
+          fi
+
+          # TODO: The keytab is component level to make it flexible
+          # PRINCIPLE=$(jq -r '.pushOptions.pushKeytab.principle' <<< $component)
+          # KEYTAB_FILE=$(jq -r '.pushOptions.pushKeytab.name' <<< $component)
+          # kinit -kt /tmp/quay/$KEYTAB_FILE $PRINCIPLE
+
+          # TODO: Get brew_tags from component
+          # BREW_TAGS=$(jq -r '.pushOptions.brew_tags  | join(" ")' <<< $component)
+
+          mkdir temp && cd temp
+
+          docker pull $containerImage
+
+          # TODO: Get the IMAGE_URL from the component once the pipeline can fetch RPA
+          IMAGE_URL=$(jq -r '.pushOptions.registory' "${DATA_FILE}")
+
+          SRPM=$(ls *.src.rpm)
+          PACKAGE_NAME=$(basename "$SRPM" .src.rpm)
+
+          if $import_command buildinfo $PACKAGE_NAME >/dev/null 2>&1;  then
+              printf "Skip import %s into BREW as it's exist ....." "$PACKAGE_NAME"
+              cd .. && rm -rf temp
+              continue
+          fi
+
+          printf "Import rpm %s with tags $BREW_TAGS ..." "$PACKAGE_NAME"
+
+          $import_command import-cg cg_import.json `pwd`
+
+          for BREW_TAG in $BREW_TAGS; do
+              $import_command tag-build $BREW_TAG $PACKAGE_NAME
+          done
+
+          # printf "Selecting auth"
+          # select-oci-auth $IMAGE_URL > $HOME/auth.json
+
+          RPMS=`ls *.rpm| sed 's/$/:application\/x-rpm/' | tr '\n' ' '`
+          LOGS=`ls *.log| sed 's/$/:text\/plain/' | tr '\n' ' '`
+          JSONS=`ls *.json| sed 's/$/:application\/json/' | tr '\n' ' '`
+
+          if [ "$BREW_ENV" == "prod" ]; then
+              printf "Skip pushing to: $IMAGE_URL on prod ....."
+          else
+              printf "Pushing to: $IMAGE_URL on stage ....."
+              docker push \
+                --registry-config /tmp/quay/docker-config.json \
+                --artifact-type application/vnd.rpm.build.v0 \
+                $IMAGE_URL \
+                $RPMS $LOGS $JSONS | tee ./docker.log
+          fi
+
+          # Clean up for next loop
+          cd .. && rm -rf temp
+        done
+
+        printf 'Completed "%s" for "%s"\n\n' "$(context.task.name)" "$APPLICATION"
+
+      workingDir: $(workspaces.data.path)
+      volumeMounts:
+        - mountPath: /tmp/quay
+          name: quay-volume
+          readOnly: true
+  volumes:
+    - name: quay-volume
+      secret:
+        secretName: $(params.pushSecret)
+  workspaces:
+    - name: data
