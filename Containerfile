@@ -1,22 +1,21 @@
-FROM quay.io/fedora/python-312:20241030@sha256:46ebbb7fc2b12185aea8a5ad566042813aec3b7d050c9071e68fc6f9b46afb47 AS builder
+FROM quay.io/fedora/python-313:20241106@sha256:8fcd24b44a124986b54e81b79a959c1fe542edb43e537dde47141ef473532423 AS builder
 
 # builder should use root to install/create all files
 USER root
 
-# hadolint ignore=DL3033,DL4006,SC2039,SC3040
+# hadolint ignore=DL3033,DL3041,DL4006,SC2039,SC3040
 RUN set -exo pipefail \
     && mkdir -p /mnt/rootfs \
     # install runtime dependencies
-    && yum install -y \
+    && dnf install -y \
         --installroot=/mnt/rootfs \
-        --releasever=/ \
+        --use-host-config \
         --setopt install_weak_deps=false \
         --nodocs \
         --disablerepo=* \
         --enablerepo=fedora,updates \
         python3 \
-    && yum --installroot=/mnt/rootfs clean all \
-    && rm -rf /mnt/rootfs/var/cache/* /mnt/rootfs/var/log/dnf* /mnt/rootfs/var/log/yum.* \
+    && dnf --installroot=/mnt/rootfs clean all \
     # https://python-poetry.org/docs/master/#installing-with-the-official-installer
     && curl -sSL --proto "=https" https://install.python-poetry.org | python3 - \
     && python3 -m venv /venv

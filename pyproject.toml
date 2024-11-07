@@ -11,7 +11,7 @@ packages = [{include = "retasc", from = "src"}]
 repository = "https://github.com/release-engineering/retasc"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13"
 
 opentelemetry-sdk = "^1.26.0"
 opentelemetry-instrumentation-flask = "^0.47b0"
