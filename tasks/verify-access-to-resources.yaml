@@ -1,0 +1,88 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-access-to-resources
+  labels:
+    app.kubernetes.io/version: "0.3.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: release
+spec:
+  description: >-
+    Tekton task to verify access to required resources & check if internal requests can be created.
+  params:
+    - name: release
+      description: Namespace/name of the Release
+      type: string
+    - name: releasePlan
+      description: Namespace/name of the ReleasePlan
+      type: string
+    - name: releasePlanAdmission
+      description: Namespace/name of the ReleasePlanAdmission
+      type: string
+    - name: releaseServiceConfig
+      description: Namespace/name of the ReleaseServiceConfig
+      type: string
+    - name: snapshot
+      description: Namespace/name of the Snapshot
+      type: string
+    - name: requireInternalServices
+      description: Whether internal services are required
+      type: string
+      default: "false"
+  steps:
+    - name: verify-access-to-resources
+      image: quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
+      script: |
+          #!/usr/bin/env bash
+
+          ORIGIN_NAMESPACE="$(cut -f1 -d/ <<< "$(params.release)")"
+          TARGET_NAMESPACE="$(cut -f1 -d/ <<< "$(params.releasePlanAdmission)")"
+          RSC_NAMESPACE="$(cut -f1 -d/ <<< "$(params.releaseServiceConfig)")"
+
+          RELEASE_NAME="$(cut -f2 -d/ <<< "$(params.release)")"
+          RELEASEPLAN_NAME="$(cut -f2 -d/ <<< "$(params.releasePlan)")"
+          RELEASEPLANADMISSION_NAME="$(cut -f2 -d/ <<< "$(params.releasePlanAdmission)")"
+          RELEASESERVICECONFIG_NAME="$(cut -f2 -d/ <<< "$(params.releaseServiceConfig)")"
+          SNAPSHOT_NAME="$(cut -f2 -d/ <<< "$(params.snapshot)")"
+
+          CAN_I_READ_RELEASES="$(kubectl auth can-i get release/"${RELEASE_NAME}" -n "${ORIGIN_NAMESPACE}")"
+          CAN_I_READ_RELEASEPLANS="$(kubectl auth can-i get releaseplan/"${RELEASEPLAN_NAME}"\
+              -n "${ORIGIN_NAMESPACE}")"
+          CAN_I_READ_RELEASEPLANADMISSIONS="$(kubectl auth can-i get\
+              releaseplanadmission/"${RELEASEPLANADMISSION_NAME}" -n "${TARGET_NAMESPACE}")"
+          CAN_I_READ_RELEASESERVICECONFIG="$(kubectl auth can-i get\
+              releaseserviceconfig/"${RELEASESERVICECONFIG_NAME}" -n "${RSC_NAMESPACE}")"
+          CAN_I_READ_SNAPSHOTS="$(kubectl auth can-i get snapshot/"${SNAPSHOT_NAME}" -n "${ORIGIN_NAMESPACE}")"
+
+          if [ "$(params.requireInternalServices)" = "true" ]; then
+            CAN_I_CREATE_INTERNALREQUESTS="$(kubectl auth can-i create internalrequest -n "${TARGET_NAMESPACE}")"
+          else
+            CAN_I_CREATE_INTERNALREQUESTS="skipped"
+          fi
+
+          echo ""
+          echo "CAN_I_READ_RELEASES? ${CAN_I_READ_RELEASES}"
+          echo "CAN_I_READ_RELEASEPLANS? ${CAN_I_READ_RELEASEPLANS}"
+          echo "CAN_I_READ_RELEASEPLANADMISSIONS? ${CAN_I_READ_RELEASEPLANADMISSIONS}"
+          echo "CAN_I_READ_RELEASESERVICECONFIG? ${CAN_I_READ_RELEASESERVICECONFIG}"
+          echo "CAN_I_READ_SNAPSHOTS? ${CAN_I_READ_SNAPSHOTS}"
+          echo ""
+          echo "CAN_I_CREATE_INTERNALREQUESTS? ${CAN_I_CREATE_INTERNALREQUESTS}"
+          echo ""
+
+          if [ "${CAN_I_READ_RELEASES}" = "no" ] ||\
+              [ "${CAN_I_READ_RELEASEPLANS}" = "no" ] ||\
+              [ "${CAN_I_READ_RELEASEPLANADMISSIONS}" = "no" ] ||\
+              [ "${CAN_I_READ_RELEASESERVICECONFIG}" = "no" ] ||\
+              [ "${CAN_I_READ_SNAPSHOTS}" = "no" ] ||\
+              [ "${CAN_I_CREATE_INTERNALREQUESTS}" = "no" ] ; then
+            echo "Error: Cannot read or create required Release resources!"
+            echo ""
+            echo "This indicates that your workspace is not correctly setup"
+            echo "Please reach out to a workspace administrator"
+            exit 1
+          fi
+
+          echo "Access to Release resources verified"
