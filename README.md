@@ -12,7 +12,7 @@ create or update Jira issues according to custom rules and Jira templates.
 
 ReTaSC creates and manages Jira issues until resolved. This means that if a PP
 schedule or a rule changes, the related unresolved Jira issues are also updated
-or even closed.
+and even closed.
 
 ## Tasks, Rules and Prerequisites
 
