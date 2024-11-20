@@ -45,7 +45,7 @@ def _update_issue(
     jira_issue_id: str, template: str, context, parent_issue_key: str | None = None
 ) -> dict | None:
     """
-    Create and updates Jira issue if needed.
+    Create and update Jira issue if needed.
 
     The issue is updated according to the template.
 
