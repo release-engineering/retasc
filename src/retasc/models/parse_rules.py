@@ -9,6 +9,7 @@ from itertools import chain
 import yaml
 from pydantic import ValidationError
 
+from retasc.models.config import Config
 from retasc.models.rule import Rule
 from retasc.utils import to_comma_separated
 
@@ -40,6 +41,7 @@ def parse_yaml_objects(rule_file: str) -> list[dict]:
 class ParseState:
     """Keeps state for parsing and validation."""
 
+    config: Config
     rules: dict[str, Rule] = field(default_factory=dict)
     rule_files: defaultdict[str, list[str]] = field(
         default_factory=lambda: defaultdict(list)
@@ -78,7 +80,7 @@ class ParseState:
             errors = [
                 error
                 for prereq in rule.prerequisites
-                for error in prereq.validation_errors(self.rules.values())
+                for error in prereq.validation_errors(self.rules.values(), self.config)
             ]
             if errors:
                 self._add_invalid_rule_error(rule, "\n  ".join(errors))
@@ -90,12 +92,12 @@ class ParseState:
         )
 
 
-def parse_rules(path: str) -> dict[str, Rule]:
+def parse_rules(path: str, config: Config) -> dict[str, Rule]:
     """
     Parses rules in path recursively to dict with rule name as key and the rule
     as value.
     """
-    state = ParseState()
+    state = ParseState(config=config)
 
     for rule_file in iterate_yaml_files(path):
         state.parse_rules(rule_file)

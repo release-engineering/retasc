@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import logging
-import os
 import re
 from collections import defaultdict
 from collections.abc import Iterator
 
 from retasc.jira_client import DryRunJiraClient, JiraClient
+from retasc.models.config import Config
 from retasc.models.parse_rules import parse_rules
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.models.rule import Rule
@@ -69,18 +69,13 @@ def drop_issues(context: RuntimeContext):
     context.report.set("dropped_issues", to_drop)
 
 
-def run(*, dry_run: bool) -> Report:
-    jira_url = os.environ["RETASC_JIRA_URL"]
-    jira_token = os.environ["RETASC_JIRA_TOKEN"]
-    pp_url = os.environ["RETASC_PP_URL"]
-    path = os.environ["RETASC_RULES_PATH"]
-
+def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
     session = requests_session()
     jira_cls = DryRunJiraClient if dry_run else JiraClient
-    jira = jira_cls(api_url=jira_url, token=jira_token, session=session)
-    pp = ProductPagesApi(pp_url, session=session)
-    rules = parse_rules(path)
-    template = TemplateManager()
+    jira = jira_cls(api_url=config.jira_url, token=jira_token, session=session)
+    pp = ProductPagesApi(config.product_pages_url, session=session)
+    rules = parse_rules(config.rules_path, config=config)
+    template = TemplateManager(config.jira_template_path)
     report = Report()
     context = RuntimeContext(
         session=session,
@@ -89,6 +84,7 @@ def run(*, dry_run: bool) -> Report:
         rules=rules,
         template=template,
         report=report,
+        config=config,
     )
 
     for product, release, rules in iterate_rules(context):

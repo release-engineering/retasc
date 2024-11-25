@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+import json
 from datetime import UTC, date, datetime
 from unittest.mock import patch
 
-from pytest import fixture, mark
+from pytest import fixture, mark, raises
 
-from retasc.jira import JIRA_ISSUE_ID_LABEL_PREFIX, JIRA_LABEL
+from retasc.models.config import parse_config
 from retasc.models.prerequisites.condition import PrerequisiteCondition
 from retasc.models.prerequisites.schedule import PrerequisiteSchedule
 from retasc.models.prerequisites.target_date import PrerequisiteTargetDate
@@ -16,6 +17,15 @@ from .factory import Factory
 DUMMY_ISSUE = """
 summary: test
 """
+
+
+def call_run():
+    config = parse_config("examples/config.yaml")
+    return run(config=config, jira_token="", dry_run=False)
+
+
+def issue_labels(issue_id: str) -> list[str]:
+    return [f"retasc-id-{issue_id}", "retasc-managed", "retasc-release-rhel-10.0"]
 
 
 @fixture
@@ -39,21 +49,21 @@ def test_parse_version():
 
 def test_run_rule_simple(factory):
     factory.new_rule(name="rule1")
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data == {"rhel": {"rhel-10.0": {"rule1": {"state": "Completed"}}}}
 
 
 def test_run_rule_jira_issue_create(factory, mock_jira):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data == {
         "rhel": {
             "rhel-10.0": {
                 rule.name: {
                     "Jira('test_jira_template_1')": {
-                        "create": {"summary": "test"},
-                        "issue": "TEST",
+                        "create": '{"summary": "test"}',
+                        "issue": "TEST-1",
                         "state": "InProgress",
                     },
                     "state": "InProgress",
@@ -64,9 +74,52 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
     mock_jira.create_issue.assert_called_once_with(
         {
             "summary": "test",
-            "labels": [JIRA_LABEL, f"{JIRA_ISSUE_ID_LABEL_PREFIX}test_jira_template_1"],
+            "labels": issue_labels(jira_issue_prereq.jira_issue_id),
         }
     )
+
+
+def test_run_rule_jira_issue_create_subtasks(factory, mock_jira):
+    subtasks = [
+        factory.new_jira_subtask(DUMMY_ISSUE),
+        factory.new_jira_subtask(DUMMY_ISSUE),
+    ]
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        DUMMY_ISSUE, subtasks=subtasks
+    )
+    condition = "issues | sort"
+    condition_prereq = PrerequisiteCondition(condition=condition)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq, condition_prereq])
+    report = call_run()
+    assert report.data == {
+        "rhel": {
+            "rhel-10.0": {
+                rule.name: {
+                    "Jira('test_jira_template_3')": {
+                        "create": '{"summary": "test"}',
+                        "issue": "TEST-1",
+                        "state": "InProgress",
+                        "Subtask('test_jira_template_1')": {
+                            "create": '{"summary": "test"}',
+                            "issue": "TEST-2",
+                        },
+                        "Subtask('test_jira_template_2')": {
+                            "create": '{"summary": "test"}',
+                            "issue": "TEST-3",
+                        },
+                    },
+                    f"Condition({condition!r})": {
+                        "result": [
+                            "test_jira_template_1",
+                            "test_jira_template_2",
+                            "test_jira_template_3",
+                        ],
+                    },
+                    "state": "InProgress",
+                }
+            }
+        }
+    }
 
 
 def test_run_rule_jira_issue_in_progress(factory, mock_jira):
@@ -76,13 +129,13 @@ def test_run_rule_jira_issue_in_progress(factory, mock_jira):
         {
             "key": "TEST-1",
             "fields": {
-                "labels": ["retasc-id-test_jira_template_1"],
+                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
                 "resolution": None,
                 "summary": "test",
             },
         }
     ]
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data == {
         "rhel": {
             "rhel-10.0": {
@@ -107,20 +160,20 @@ def test_run_rule_jira_issue_in_progress_update(factory, mock_jira):
         {
             "key": "TEST-1",
             "fields": {
-                "labels": ["retasc-id-test_jira_template_1"],
+                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
                 "resolution": None,
                 "summary": "test old",
             },
         }
     ]
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data == {
         "rhel": {
             "rhel-10.0": {
                 rule.name: {
                     "Jira('test_jira_template_1')": {
                         "issue": "TEST-1",
-                        "update": {"summary": "test"},
+                        "update": '{"summary": "test"}',
                         "state": "InProgress",
                     },
                     "state": "InProgress",
@@ -132,6 +185,42 @@ def test_run_rule_jira_issue_in_progress_update(factory, mock_jira):
     mock_jira.edit_issue.assert_called_once_with("TEST-1", {"summary": "test"})
 
 
+def test_run_rule_jira_issue_update_labels(factory, mock_jira):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("""
+        labels: [test1, test3]
+    """)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    old_labels = issue_labels(jira_issue_prereq.jira_issue_id) + ["test1", "test2"]
+    expected_labels = issue_labels(jira_issue_prereq.jira_issue_id) + ["test1", "test3"]
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "labels": old_labels,
+                "resolution": None,
+                "summary": "test old",
+            },
+        }
+    ]
+    report = call_run()
+    assert report.data == {
+        "rhel": {
+            "rhel-10.0": {
+                rule.name: {
+                    "Jira('test_jira_template_1')": {
+                        "issue": "TEST-1",
+                        "update": json.dumps({"labels": expected_labels}),
+                        "state": "InProgress",
+                    },
+                    "state": "InProgress",
+                }
+            }
+        }
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once_with("TEST-1", {"labels": expected_labels})
+
+
 def test_run_rule_jira_issue_completed(factory, mock_jira):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])
@@ -139,12 +228,12 @@ def test_run_rule_jira_issue_completed(factory, mock_jira):
         {
             "key": "TEST-1",
             "fields": {
-                "labels": ["retasc-id-test_jira_template_1"],
+                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
                 "resolution": "Closed",
             },
         }
     ]
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data == {
         "rhel": {
             "rhel-10.0": {
@@ -164,7 +253,7 @@ def test_run_rule_jira_issue_drop(factory, mock_jira):
         {
             "key": "TEST-1",
             "fields": {
-                "labels": ["retasc-managed", "retasc-id-test_jira_template_1"],
+                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
                 "summary": "test",
                 "resolution": None,
             },
@@ -172,7 +261,7 @@ def test_run_rule_jira_issue_drop(factory, mock_jira):
         {
             "key": "TEST-2",
             "fields": {
-                "labels": ["retasc-managed", "retasc-id-test_jira_template_2"],
+                "labels": issue_labels("test_jira_template_2"),
                 "resolution": None,
             },
         },
@@ -191,7 +280,7 @@ def test_run_rule_jira_issue_drop(factory, mock_jira):
             },
         },
     ]
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data == {
         "rhel": {
             "rhel-10.0": {
@@ -226,14 +315,14 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
     # prerequisites are Pending (all preceding conditions must pass).
     if result:
         issue_prereq = {
-            "create": {"summary": "test"},
-            "issue": "TEST",
+            "create": '{"summary": "test"}',
+            "issue": "TEST-1",
             "state": "InProgress",
         }
     else:
         issue_prereq = {"state": "Pending"}
 
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data == {
         "rhel": {
             "rhel-10.0": {
@@ -278,7 +367,7 @@ def test_run_rule_schedule_target_date(target_date, result, mock_pp, factory):
     )
 
     state = "Completed" if result else "Pending"
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data["rhel"]["rhel-10.0"][rule.name]["state"] == state
 
 
@@ -306,5 +395,32 @@ def test_run_rule_schedule_params(condition_expr, result, mock_pp, factory):
     rule = factory.new_rule(prerequisites=[schedule, condition])
 
     state = "Completed" if result else "Pending"
-    report = run(dry_run=False)
+    report = call_run()
     assert report.data["rhel"]["rhel-10.0"][rule.name]["state"] == state
+
+
+def test_run_rule_jira_issue_unsupported_fields(factory):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        "field_1: 1\n" "field_2: 2\n"
+    )
+    factory.new_rule(prerequisites=[jira_issue_prereq])
+    expected_error = (
+        f"Jira template {jira_issue_prereq.template!r} contains"
+        " unsupported fields: 'field_1', 'field_2'"
+        "\nSupported fields: 'description', 'labels', 'project', 'summary'"
+    )
+    with raises(RuntimeError, match=expected_error):
+        call_run()
+
+
+def test_run_rule_jira_issue_reserved_labels(factory):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        "labels: [retasc-id-test1, retasc-id-test2]"
+    )
+    factory.new_rule(prerequisites=[jira_issue_prereq])
+    expected_error = (
+        f"Jira template {jira_issue_prereq.template!r} must not use labels"
+        " prefixed with 'retasc-id-': 'retasc-id-test1', 'retasc-id-test2'"
+    )
+    with raises(RuntimeError, match=expected_error):
+        call_run()

@@ -7,14 +7,14 @@
     - rule: "Dependent Rule 1"
     - rule: "Dependent Rule 2"
     - jira_issue_id: main
-      template: "examples/jira/main.yaml"
+      template: "main.yaml.j2"
       subtasks:
         - id: add_beta_repos
-          template: "examples/jira/add_beta_repos.yaml"
+          template: "add_beta_repos.yaml.j2"
         - id: notify_team
-          template: "examples/jira/notify_team.yaml"
+          template: "notify_team.yaml.j2"
     - jira_issue_id: secondary
-      template: "examples/jira/secondary.yaml"
+      template: "secondary.yaml.j2"
 
 - version: 1
   name: "Dependent Rule 1"

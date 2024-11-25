@@ -10,7 +10,7 @@ from retasc.models.rule import Rule
 
 def test_prerequisite_base():
     base = PrerequisiteBase()
-    assert base.validation_errors([]) == []
+    assert base.validation_errors([], Mock()) == []
     with raises(NotImplementedError):
         base.update_state(Mock())
     with raises(NotImplementedError):

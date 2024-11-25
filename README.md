@@ -29,23 +29,23 @@ prerequisites:
   `schedule_task: "GA for rhel {{ major }}.{{ minor }}"`
 - a target date, for example: `target_date: "start_date - 3|weeks"`
 - a condition, for example: `condition: "major >= 10"`
-- reference to other Rule that must be completed
-- Jira issue templates
+- reference to other Rule that must be in Completed state
+- Jira issue templates - the issues are created only if none of the previous
+  prerequisites are in Pending state
 
 Task state can be one of:
 
-- Pending (some prerequisites and not satisfied)
-- In-progress (prerequisites are satisfied and DoD is not)
-- Completed (prerequisites and DoD is satisfied)
+- Pending (if some prerequisites are in Pending)
+- In-progress (if some prerequisites are in In-progress but none are Pending)
+- Completed (if all prerequisites are Completed)
 
 ## Environment Variables
 
-Below is list of environment variables supported in the container image:
+Below is list of environment variables supported by the application and in the
+container image:
 
-- `RETASC_JIRA_URL` - Jira URL
+- `RETASC_CONFIG` - Path to the main configuration file
 - `RETASC_JIRA_TOKEN` - Jira access token
-- `RETASC_RULES_PATH` - Path to rules
-- `RETASC_PP_URL` - Product Pages URL
 - `RETASC_LOGGING_CONFIG` - Path to JSON file with the logging configuration;
   see details in [Configuration dictionary
   schema](https://docs.python.org/3/library/logging.config.html#logging-config-dictschema)
@@ -70,13 +70,14 @@ retasc validate-rules examples/rules
 retasc validate-rules examples/rules/rules.yaml
 ```
 
-## Generate Rule Schema
+## Generate Schema Files
 
-Example of generating YAML and JSON schema for rule files:
+Examples of generating YAML and JSON schema for rule and configuration files:
 
 ```
 retasc generate-schema rule_schema.yaml
 retasc generate-schema --json rule_schema.json
+retasc generate-schema --config --json config.json
 ```
 
 ## Development

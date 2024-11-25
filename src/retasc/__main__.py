@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import argparse
 import logging
+import os
 import sys
 
 from retasc import __doc__ as doc
 from retasc import __version__
+from retasc.models.config import Config, parse_config
 from retasc.models.generate_schema import generate_schema
 from retasc.models.parse_rules import RuleParsingError, parse_rules
 from retasc.retasc_logging import init_logging
@@ -45,6 +47,12 @@ def parse_args():
         help="Generate JSON instead of the default YAML",
         action="store_true",
     )
+    generate_parser.add_argument(
+        "-c",
+        "--config",
+        help="Generate schema for the configuration instead of rules",
+        action="store_true",
+    )
 
     subparsers.add_parser(
         "run", help="Process rules, data from Product Pages and apply changes to Jira"
@@ -57,21 +65,29 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_config() -> Config:
+    config_path = os.environ["RETASC_CONFIG"]
+    return parse_config(config_path)
+
+
 def main():
     args = parse_args()
     init_logging()
     init_tracing()
 
     if args.command == "validate-rules":
+        config = get_config()
         try:
-            parse_rules(args.rule_file)
+            parse_rules(args.rule_file, config=config)
         except RuleParsingError as e:
             print(f"Validation failed: {e}")
             sys.exit(1)
         print("Validation succeeded: The rule files are valid")
     elif args.command == "generate-schema":
-        generate_schema(args.schema_file, output_json=args.json)
+        generate_schema(args.schema_file, output_json=args.json, config=args.config)
     elif args.command in ("run", "dry-run"):
         dry_run = args.command == "dry-run"
-        run(dry_run=dry_run)
+        jira_token = os.environ["RETASC_JIRA_TOKEN"]
+        config = get_config()
+        run(config=config, jira_token=jira_token, dry_run=dry_run)
     sys.exit(0)
