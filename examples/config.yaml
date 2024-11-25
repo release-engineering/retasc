@@ -1,0 +1,15 @@
+rules_path: examples/rules
+jira_template_path: examples/jira
+product_pages_url: https://pp.example.com
+jira_url: https://jira.example.com
+
+jira_fields:
+  description: description
+  labels: labels
+  project: project
+  summary: summary
+
+jira_label_templates:
+  - retasc-managed
+  - "retasc-release-{{ release }}"
+jira_label_prefix: retasc-id-

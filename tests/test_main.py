@@ -68,18 +68,18 @@ def test_run(arg, issue_key, capsys):
         "        TargetDate('start_date - 2|weeks')",
         "          target_date: 1989-12-20",
         "      Jira('main')",
-        "        create: {'summary': 'Main Issue'}",
-        f"        issue: {issue_key}",
+        '        create: {"project": {"key": "TEST"}, "summary": "Main Issue"}',
+        f"        issue: {issue_key}-1",
         "        Subtask('add_beta_repos')",
-        "          create: {'summary': 'Add Beta Repos'}",
-        f"          issue: {issue_key}",
+        '          create: {"project": {"key": "TEST"}, "summary": "Add Beta Repos"}',
+        f"          issue: {issue_key}-2",
         "        Subtask('notify_team')",
-        "          create: {'summary': 'Notify Team'}",
-        f"          issue: {issue_key}",
+        '          create: {"project": {"key": "TEAM"}, "summary": "Notify Team"}',
+        f"          issue: {issue_key}-3",
         "        state: InProgress",
         "      Jira('secondary')",
-        "        create: {'summary': 'Secondary Issue'}",
-        f"        issue: {issue_key}",
+        '        create: {"project": {"key": "TEST"}, "summary": "Secondary Issue"}',
+        f"        issue: {issue_key}-4",
         "        state: InProgress",
         "      state: InProgress",
         "    Dependent Rule 1",
@@ -102,23 +102,25 @@ def test_run(arg, issue_key, capsys):
 def test_generate_schema_yaml(mock_generate_schema):
     run_main("generate-schema", "output_schema.yaml", expected_exit_code=0)
     mock_generate_schema.assert_called_once_with(
-        "output_schema.yaml", output_json=False
+        "output_schema.yaml", output_json=False, config=False
     )
 
 
 def test_generate_schema_yaml_to_stdout(mock_generate_schema):
     run_main("generate-schema", expected_exit_code=0)
-    mock_generate_schema.assert_called_once_with(None, output_json=False)
+    mock_generate_schema.assert_called_once_with(None, output_json=False, config=False)
 
 
 def test_generate_schema_json(mock_generate_schema):
     run_main("generate-schema", "--json", "output_schema.json", expected_exit_code=0)
-    mock_generate_schema.assert_called_once_with("output_schema.json", output_json=True)
+    mock_generate_schema.assert_called_once_with(
+        "output_schema.json", output_json=True, config=False
+    )
 
 
 def test_generate_schema_json_to_stdout(mock_generate_schema):
     run_main("generate-schema", "--json", expected_exit_code=0)
-    mock_generate_schema.assert_called_once_with(None, output_json=True)
+    mock_generate_schema.assert_called_once_with(None, output_json=True, config=False)
 
 
 def test_validate_rules_output(valid_rule_file, capsys):

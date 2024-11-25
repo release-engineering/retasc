@@ -12,6 +12,9 @@ class PrerequisiteTargetDate(PrerequisiteBase):
     """
     Prerequisite target start date.
 
+    The prerequisite state is Completed only if the target_date evaluates to a
+    date in the past or it is today. Otherwise, the state is Pending.
+
     Adds the following template parameters:
     - target_date - the evaluated target date
     """

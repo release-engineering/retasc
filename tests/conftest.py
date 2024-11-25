@@ -44,19 +44,22 @@ def invalid_rule_file(rule_path, rule_dict):
 
 @fixture(autouse=True)
 def mock_env(monkeypatch):
-    monkeypatch.setenv("RETASC_JIRA_URL", "")
+    monkeypatch.setenv("RETASC_CONFIG", "examples/config.yaml")
     monkeypatch.setenv("RETASC_JIRA_TOKEN", "")
-    monkeypatch.setenv("RETASC_PP_URL", "")
-    monkeypatch.setenv("RETASC_RULES_PATH", "examples/rules")
 
 
-def mock_jira_cls(cls: str, new_issue_key: str):
+def mock_jira_cls(cls: str, new_issue_key_prefix: str):
     with patch(cls, autospec=True) as mock_cls:
         mock = mock_cls(ANY, token=ANY, session=ANY)
         mock.search_issues.return_value = []
 
+        last_issue_id = 0
+
         def mock_create_issue(fields):
-            return {"key": new_issue_key, "fields": {"resolution": None, **fields}}
+            nonlocal last_issue_id
+            last_issue_id += 1
+            key = f"{new_issue_key_prefix}-{last_issue_id}"
+            return {"key": key, "fields": {"resolution": None, **fields}}
 
         mock.create_issue.side_effect = mock_create_issue
         yield mock

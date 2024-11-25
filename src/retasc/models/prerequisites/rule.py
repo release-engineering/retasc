@@ -7,11 +7,19 @@ from .base import PrerequisiteBase
 
 
 class PrerequisiteRule(PrerequisiteBase):
-    """Prerequisite Rule."""
+    """
+    Reference to other required rule.
 
-    rule: str = Field(description="The prerequisite rule")
+    The prerequisite state is based on the referenced rule
+    prerequisites:
+    - Pending, if some prerequisites are in Pending
+    - In-progress, if some prerequisites are in In-progress but none are Pending
+    - Completed, if all prerequisites are Completed
+    """
 
-    def validation_errors(self, rules) -> list[str]:
+    rule: str = Field(description="Name of the required rule")
+
+    def validation_errors(self, rules, config) -> list[str]:
         if not any(self.rule == rule.name for rule in rules):
             return [f"Dependent rule does not exist: {self.rule!r}"]
         return []

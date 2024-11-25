@@ -10,7 +10,15 @@ SCHEMA_VERSION = 1
 
 
 class Rule(BaseModel):
-    """Rule for creating/managing Jira issues based on prerequisites."""
+    """
+    Rule with prerequisites.
+
+    The rule provides a state based on specific input (product, release,
+    version etc.) passed to the prerequisites:
+    - Pending, if some prerequisites are in Pending
+    - In-progress, if some prerequisites are in In-progress but none are Pending
+    - Completed, if all prerequisites are Completed
+    """
 
     class Config:
         frozen = True
@@ -33,9 +41,10 @@ class Rule(BaseModel):
     @cache
     def update_state(self, context) -> ReleaseRuleState:
         """
-        Return Completed only if all issues were closed, otherwise returns
-        Pending if any prerequisites are Pending, and InProgress in other
-        cases.
+        The return value is:
+        - Pending, if some prerequisites are in Pending
+        - In-progress, if some prerequisites are in In-progress but none are Pending
+        - Completed, if all prerequisites are Completed
         """
         for prereq in self.prerequisites:
             with context.report.section(prereq.section_name()):

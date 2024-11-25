@@ -6,22 +6,20 @@ from functools import cache
 
 from requests import Session
 
-from retasc.jira import (
-    JIRA_ISSUE_ID_LABEL_PREFIX,
-    JIRA_LABEL,
-    JIRA_MANAGED_FIELDS,
-)
 from retasc.jira_client import JiraClient
+from retasc.models.config import Config
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.models.rule import Rule
 from retasc.product_pages_api import ProductPagesApi
 from retasc.report import Report
 from retasc.templates.template_manager import TemplateManager
 
+JIRA_REQUIRED_FIELDS = frozenset(["labels", "resolution"])
 
-def get_issue_id(issue):
+
+def get_issue_id(issue, *, label_prefix):
     for label in issue["fields"]["labels"]:
-        if label.startswith(JIRA_ISSUE_ID_LABEL_PREFIX):
+        if label.startswith(label_prefix):
             return label
     return f"retasc-no-id-{issue['key']}"
 
@@ -34,21 +32,33 @@ class RuntimeContext:
     template: TemplateManager
     session: Session
     report: Report
+    config: Config
     prerequisites_state: ReleaseRuleState = ReleaseRuleState.Pending
 
     release: str = ""
 
     def _issues(self) -> Iterator[tuple[str, dict]]:
-        jql = f"labels={JIRA_LABEL} AND affectedVersion={json.dumps(self.release)}"
-        issues = self.jira.search_issues(jql=jql, fields=JIRA_MANAGED_FIELDS)
+        jql = " AND ".join(f"labels={json.dumps(label)}" for label in self.jira_labels)
+        supported_fields = list(
+            JIRA_REQUIRED_FIELDS.union(self.config.jira_fields.values())
+        )
+        issues = self.jira.search_issues(jql=jql, fields=supported_fields)
         for issue in issues:
-            issue_id = get_issue_id(issue)
+            issue_id = get_issue_id(issue, label_prefix=self.config.jira_label_prefix)
             yield (issue_id, issue)
 
     @property
     @cache
     def issues(self) -> dict[str, dict]:
         return dict(self._issues())
+
+    @property
+    @cache
+    def jira_labels(self) -> list[str]:
+        return [
+            self.template.render(template)
+            for template in self.config.jira_label_templates
+        ]
 
     # Enable use in cached functions
     def __hash__(self):

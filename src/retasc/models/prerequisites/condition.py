@@ -9,7 +9,12 @@ from .base import PrerequisiteBase
 
 
 class PrerequisiteCondition(PrerequisiteBase):
-    """Base class for rule prerequisites."""
+    """
+    Custom condition evaluated by templating engine.
+
+    The prerequisite state is Completed only if the evaluated value is true,
+    otherwise it is Pending.
+    """
 
     condition: str = Field(
         description=dedent("""

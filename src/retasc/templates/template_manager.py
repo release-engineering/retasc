@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import jinja2
@@ -13,8 +14,9 @@ type TemplateParams = dict[str, Any]
 class TemplateManager:
     params: TemplateParams = field(default_factory=dict)
 
-    def __init__(self):
+    def __init__(self, template_search_path: Path):
         self.env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(template_search_path),
             undefined=jinja2.StrictUndefined,
             autoescape=jinja2.select_autoescape(
                 enabled_extensions=("html", "xml"),

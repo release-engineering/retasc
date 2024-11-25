@@ -4,6 +4,7 @@ import re
 import yaml
 from pytest import fixture, mark, raises
 
+from retasc.models.config import parse_config
 from retasc.models.parse_rules import RuleParsingError, parse_rules
 
 JIRA_TEMPLATES = [
@@ -51,6 +52,11 @@ DEPENDENT_RULES_DATA = [
 ]
 
 
+def call_parse_rules(path):
+    config = parse_config("examples/config.yaml")
+    return parse_rules(path, config)
+
+
 @fixture
 def templates_root(tmp_path, monkeypatch):
     monkeypatch.setenv("RETASC_JIRA_TEMPLATES_ROOT", str(tmp_path))
@@ -70,12 +76,12 @@ def create_dependent_rules(rule_path):
 
 def test_parse_no_rules(rule_path):
     with raises(RuleParsingError, match="No rules found in '.*/rules'"):
-        parse_rules(str(rule_path))
+        call_parse_rules(str(rule_path))
 
 
 def test_parse_rule_valid_simple(rule_path):
     create_dependent_rules(rule_path)
-    parse_rules(str(rule_path / "other_rules.yml"))
+    call_parse_rules(str(rule_path / "other_rules.yml"))
 
 
 def test_parse_rule_valid(templates_root, rule_path):
@@ -83,12 +89,12 @@ def test_parse_rule_valid(templates_root, rule_path):
     file.write_text(yaml.dump(RULE_DATA))
     create_dependent_rules(rule_path)
     create_jira_templates(templates_root)
-    parse_rules(str(rule_path))
+    call_parse_rules(str(rule_path))
 
 
 def test_parse_rule_invalid(invalid_rule_file):
     with raises(RuleParsingError):
-        parse_rules(invalid_rule_file)
+        call_parse_rules(invalid_rule_file)
 
 
 def test_parse_rule_missing_dependent_rules(templates_root, rule_path):
@@ -101,7 +107,7 @@ def test_parse_rule_missing_dependent_rules(templates_root, rule_path):
         "\n  Dependent rule does not exist: 'Dependent Rule 2'"
     )
     with raises(RuleParsingError, match=expected_error):
-        parse_rules(str(rule_path))
+        call_parse_rules(str(rule_path))
 
 
 def test_parse_rule_missing_jira_templates(rule_path, templates_root):
@@ -117,7 +123,7 @@ def test_parse_rule_missing_jira_templates(rule_path, templates_root):
         + re.escape(repr(str(templates_root / "main.yaml")))
     )
     with raises(RuleParsingError, match=expected_error):
-        parse_rules(str(rule_path))
+        call_parse_rules(str(rule_path))
 
 
 def test_parse_rule_duplicate_jira_ids(rule_path, templates_root):
@@ -146,7 +152,7 @@ def test_parse_rule_duplicate_jira_ids(rule_path, templates_root):
         "\n  Jira issue ID(s) already used elsewhere: 'secondary'"
     )
     with raises(RuleParsingError, match=expected_error):
-        parse_rules(str(rule_path))
+        call_parse_rules(str(rule_path))
 
 
 def test_parse_rule_duplicate_name(rule_path, rule_dict):
@@ -159,7 +165,7 @@ def test_parse_rule_duplicate_name(rule_path, rule_dict):
         "Duplicate rule name 'DUPLICATE' in files: '[^']*/rule1.yml', '[^']*/rule2.yml'"
     )
     with raises(RuleParsingError, match=expected_error):
-        parse_rules(rule_path)
+        call_parse_rules(rule_path)
 
 
 @mark.parametrize("content", ("TEST: [", "[].", "[[[]]"))
@@ -168,4 +174,4 @@ def test_parse_rule_ivalid_yaml(content, rule_path):
     file.write_text(content)
     expected_error = re.escape(f"Invalid YAML file {str(file)!r}: ") + ".*"
     with raises(RuleParsingError, match=expected_error):
-        parse_rules(str(rule_path))
+        call_parse_rules(str(rule_path))

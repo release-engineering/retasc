@@ -10,6 +10,10 @@ class PrerequisiteSchedule(PrerequisiteBase):
     """
     Prerequisite Product Pages schedule.
 
+    The schedule must exist, otherwise an error is raised.
+
+    The prerequisite state is always Completed.
+
     Adds the following template parameters:
     - schedule - dict with all schedules for the current release
     - schedule_task - name of the schedule task

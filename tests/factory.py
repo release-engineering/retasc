@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from textwrap import dedent
 
-from retasc.models.prerequisites.jira_issue import PrerequisiteJiraIssue
+from retasc.models.prerequisites.jira_issue import (
+    JiraIssueTemplate,
+    PrerequisiteJiraIssue,
+)
 from retasc.models.rule import Rule
 
 
@@ -27,7 +30,7 @@ class Factory:
         self.rules_dict[name] = rule
         return rule
 
-    def new_jira_issue_prerequisite(self, template, *, subtasks=[]):
+    def new_jira_template_file(self, template: str) -> tuple[str, str]:
         self.last_jira_template_id += 1
         jira_issue_id = f"test_jira_template_{self.last_jira_template_id}"
 
@@ -35,6 +38,16 @@ class Factory:
         with open(tmp, "w") as f:
             f.write(dedent(template))
 
+        return jira_issue_id, str(tmp)
+
+    def new_jira_subtask(self, template: str) -> JiraIssueTemplate:
+        jira_issue_id, file = self.new_jira_template_file(template)
+        return JiraIssueTemplate(id=jira_issue_id, template=file)
+
+    def new_jira_issue_prerequisite(self, template, *, subtasks=[]):
+        jira_issue_id, file = self.new_jira_template_file(template)
         return PrerequisiteJiraIssue(
-            jira_issue_id=jira_issue_id, template=str(tmp), subtasks=subtasks
+            jira_issue_id=jira_issue_id,
+            template=file,
+            subtasks=subtasks,
         )

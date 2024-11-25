@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from pydantic import BaseModel
 
+import retasc.models.config
 from retasc.models.release_rule_state import ReleaseRuleState
 
 
@@ -14,7 +15,9 @@ class PrerequisiteBase(BaseModel):
 
         frozen = True
 
-    def validation_errors(self, rules) -> list[str]:
+    def validation_errors(
+        self, rules, config: retasc.models.config.Config
+    ) -> list[str]:
         """Return validation errors if any."""
         return []
 

@@ -95,9 +95,7 @@ jobs:
         run: poetry install --only=main
 
       - name: Validate rule file
+        env:
+          RETASC_CONFIG: examples/config.yaml
         run: |
-          poetry run retasc validate-rules examples/rules | tee validation_output.log
-
-      - name: Assert the rule file is valid
-        run: |
-          grep -q "Validation succeeded" validation_output.log
+          poetry run retasc validate-rules examples/rules
