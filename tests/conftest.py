@@ -2,10 +2,10 @@
 from datetime import date
 from unittest.mock import ANY, patch
 
-import yaml
 from pytest import fixture
 
 from retasc.product_pages_api import ProductPagesScheduleTask
+from retasc.yaml import yaml
 
 
 @fixture
@@ -30,7 +30,7 @@ def rule_path(tmp_path):
 @fixture
 def valid_rule_file(rule_path, rule_dict):
     file = rule_path / "rule.yaml"
-    file.write_text(yaml.dump(rule_dict, sort_keys=False))
+    yaml().dump(rule_dict, file)
     yield str(file)
 
 
@@ -38,7 +38,7 @@ def valid_rule_file(rule_path, rule_dict):
 def invalid_rule_file(rule_path, rule_dict):
     del rule_dict["version"]
     file = rule_path / "rule.yaml"
-    file.write_text(yaml.dump(rule_dict, sort_keys=False))
+    yaml().dump(rule_dict, file)
     yield str(file)
 
 

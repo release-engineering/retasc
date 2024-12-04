@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
 
-import yaml
-
 from retasc.models.generate_schema import generate_schema
 from retasc.models.rule import Rule
+from retasc.yaml import yaml
 
 
 def test_generate_json_schema(tmp_path):
@@ -32,7 +31,7 @@ def test_generate_yaml_schema(tmp_path):
     schema_file = tmp_path / "rules_schema.yaml"
     generate_schema(output_path=schema_file, output_json=False)
     with open(schema_file) as f:
-        schema = yaml.safe_load(f)
+        schema = yaml().load(f)
 
     expected_schema = Rule.model_json_schema()
     assert schema == expected_schema
