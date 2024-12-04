@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from pathlib import Path
 
-import yaml
 from pydantic import BaseModel, Field
+
+from retasc.yaml import yaml
 
 
 class Config(BaseModel):
@@ -16,7 +17,7 @@ class Config(BaseModel):
     jira_label_templates: list[str] = Field(
         description=(
             "Label templates for the managed issues in Jira."
-            ' Example: ["retasc-managed", "retasc-managed-{{ release }}"]'
+            '\nExample: ["retasc-managed", "retasc-managed-{{ release }}"]'
         )
     )
     jira_label_prefix: str = Field(
@@ -29,6 +30,6 @@ class Config(BaseModel):
 
 def parse_config(config_path: str) -> Config:
     with open(config_path) as f:
-        config_data = yaml.safe_load(f)
+        config_data = yaml().load(f)
 
     return Config(**config_data)

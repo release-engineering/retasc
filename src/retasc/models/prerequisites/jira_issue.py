@@ -4,11 +4,11 @@ import os
 from collections.abc import Iterator
 from itertools import takewhile
 
-import yaml
 from pydantic import BaseModel, Field
 
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.utils import to_comma_separated
+from retasc.yaml import yaml
 
 from .base import PrerequisiteBase
 
@@ -116,7 +116,7 @@ def _update_issue(
         template_content = f.read()
 
     content = context.template.render(template_content)
-    template_data = yaml.safe_load(content)
+    template_data = yaml().load(content)
     fields = _template_to_issue_data(template_data, context, template)
 
     if issue:

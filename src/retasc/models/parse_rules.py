@@ -6,12 +6,13 @@ from dataclasses import dataclass, field
 from glob import iglob
 from itertools import chain
 
-import yaml
 from pydantic import ValidationError
+from ruamel.yaml.error import YAMLError
 
 from retasc.models.config import Config
 from retasc.models.rule import Rule
 from retasc.utils import to_comma_separated
+from retasc.yaml import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ def iterate_yaml_files(path: str):
 
 def parse_yaml_objects(rule_file: str) -> list[dict]:
     with open(rule_file) as file:
-        data = yaml.safe_load(file)
+        data = yaml().load(file)
         if isinstance(data, list):
             return data
         return [data]
@@ -53,7 +54,7 @@ class ParseState:
 
         try:
             rule_data_list = parse_yaml_objects(rule_file)
-        except yaml.YAMLError as e:
+        except YAMLError as e:
             self.errors.append(f"Invalid YAML file {rule_file!r}: {e}")
             return
 

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import re
 
-import yaml
 from pytest import fixture, mark, raises
 
 from retasc.models.config import parse_config
 from retasc.models.parse_rules import RuleParsingError, parse_rules
+from retasc.yaml import yaml
 
 JIRA_TEMPLATES = [
     "main.yaml",
@@ -66,12 +66,12 @@ def templates_root(tmp_path, monkeypatch):
 def create_jira_templates(path):
     for template in JIRA_TEMPLATES:
         file = path / template
-        file.write_text(yaml.dump({}, sort_keys=False))
+        yaml().dump({}, file)
 
 
 def create_dependent_rules(rule_path):
     file = rule_path / "other_rules.yml"
-    file.write_text(yaml.dump(DEPENDENT_RULES_DATA, sort_keys=False))
+    yaml().dump(DEPENDENT_RULES_DATA, file)
 
 
 def test_parse_no_rules(rule_path):
@@ -86,7 +86,7 @@ def test_parse_rule_valid_simple(rule_path):
 
 def test_parse_rule_valid(templates_root, rule_path):
     file = rule_path / "rule.yaml"
-    file.write_text(yaml.dump(RULE_DATA))
+    yaml().dump(RULE_DATA, file)
     create_dependent_rules(rule_path)
     create_jira_templates(templates_root)
     call_parse_rules(str(rule_path))
@@ -99,7 +99,7 @@ def test_parse_rule_invalid(invalid_rule_file):
 
 def test_parse_rule_missing_dependent_rules(templates_root, rule_path):
     file = rule_path / "rule.yaml"
-    file.write_text(yaml.dump(RULE_DATA))
+    yaml().dump(RULE_DATA, file)
     create_jira_templates(templates_root)
     expected_error = re.escape(
         f"Invalid rule 'Example Rule' (file {str(file)!r}):"
@@ -112,7 +112,7 @@ def test_parse_rule_missing_dependent_rules(templates_root, rule_path):
 
 def test_parse_rule_missing_jira_templates(rule_path, templates_root):
     file = rule_path / "rule.yaml"
-    file.write_text(yaml.dump(RULE_DATA, sort_keys=False))
+    yaml().dump(RULE_DATA, file)
     create_dependent_rules(rule_path)
     expected_error = (
         re.escape(
@@ -143,7 +143,7 @@ def test_parse_rule_duplicate_jira_ids(rule_path, templates_root):
         ],
     }
     rules_data = [RULE_DATA, rule2]
-    file.write_text(yaml.dump(rules_data))
+    yaml().dump(rules_data, file)
     create_dependent_rules(rule_path)
     create_jira_templates(templates_root)
     expected_error = re.escape(
@@ -159,7 +159,7 @@ def test_parse_rule_duplicate_name(rule_path, rule_dict):
     rule_dict["name"] = "DUPLICATE"
     for filename in ("rule1.yml", "rule2.yml"):
         file = rule_path / filename
-        file.write_text(yaml.dump(rule_dict))
+        yaml().dump(rule_dict, file)
 
     expected_error = (
         "Duplicate rule name 'DUPLICATE' in files: '[^']*/rule1.yml', '[^']*/rule2.yml'"
