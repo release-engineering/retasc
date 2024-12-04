@@ -18,6 +18,8 @@ class Rule(BaseModel):
     - Pending, if some prerequisites are in Pending
     - In-progress, if some prerequisites are in In-progress but none are Pending
     - Completed, if all prerequisites are Completed
+
+    Prerequisites are processed only until the first one in Pending state.
     """
 
     class Config:
@@ -47,6 +49,9 @@ class Rule(BaseModel):
         - Completed, if all prerequisites are Completed
         """
         for prereq in self.prerequisites:
+            if context.prerequisites_state == ReleaseRuleState.Pending:
+                break
+
             with context.report.section(prereq.section_name()):
                 state = prereq.update_state(context)
                 if state != ReleaseRuleState.Completed:
