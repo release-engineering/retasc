@@ -55,7 +55,9 @@ def _report_jira_issue(issue: dict, jira_issue_id: str, context):
     context.report.set("issue", issue["key"])
 
 
-def _create_issue(fields, context, label: str, parent_issue_key: str | None = None):
+def _create_issue(
+    fields, context, label: str, parent_issue_key: str | None = None
+) -> dict:
     context.report.set("create", json.dumps(fields))
     _set_parent_issue(fields, parent_issue_key)
     fields.setdefault("labels", []).extend([label, *context.jira_labels])
@@ -93,16 +95,13 @@ def _template_to_issue_data(template_data: dict, context, template: str) -> dict
 
 def _update_issue(
     jira_issue_id: str, template: str, context, parent_issue_key: str | None = None
-) -> dict | None:
+) -> dict:
     """
     Create and update Jira issue if needed.
 
     The issue is updated according to the template.
 
-    If the issue does not exist and none of the preceding prerequisites are in
-    Pending state, the issue is created.
-
-    Returns the managed Jira issue or None if it does not exist yet.
+    Returns the managed Jira issue.
     """
     label = f"{context.config.jira_label_prefix}{jira_issue_id}"
     issue = context.issues.pop(label, None)
@@ -125,14 +124,11 @@ def _update_issue(
         )
         return issue
 
-    if context.prerequisites_state > ReleaseRuleState.Pending:
-        issue = _create_issue(
-            fields, context, label=label, parent_issue_key=parent_issue_key
-        )
-        _report_jira_issue(issue, jira_issue_id, context)
-        return issue
-
-    return None
+    issue = _create_issue(
+        fields, context, label=label, parent_issue_key=parent_issue_key
+    )
+    _report_jira_issue(issue, jira_issue_id, context)
+    return issue
 
 
 class JiraIssueTemplate(BaseModel):
@@ -144,13 +140,11 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
     """
     Prerequisite Jira issue.
 
-    The Jira issue is created when no preceding prerequisites are in Pending state.
-
-    The existing Jira issue is updated until it is resolved.
+    If the issue does not exist, the issue is created. Otherwise, it is updated
+    if it is not yet resolved.
 
     After the Jira issue is resolved the prerequisite state is Completed,
-    otherwise InProgress if issue has been created or Pending if it does not
-    exist yet.
+    otherwise it is InProgress.
 
     Root directory for templates files is indicated with "jira_template_path"
     option in ReTaSC configuration, and "jira_fields" option declares supported
@@ -196,10 +190,6 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
         template parameter (dict key is jira_issue_id).
         """
         issue = _update_issue(self.jira_issue_id, self.template, context)
-
-        if issue is None:
-            return ReleaseRuleState.Pending
-
         if _is_resolved(issue):
             return ReleaseRuleState.Completed
 

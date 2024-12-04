@@ -315,12 +315,14 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
     # prerequisites are Pending (all preceding conditions must pass).
     if result:
         issue_prereq = {
-            "create": '{"summary": "test"}',
-            "issue": "TEST-1",
-            "state": "InProgress",
+            "Jira('test_jira_template_1')": {
+                "create": '{"summary": "test"}',
+                "issue": "TEST-1",
+                "state": "InProgress",
+            }
         }
     else:
-        issue_prereq = {"state": "Pending"}
+        issue_prereq = {}
 
     report = call_run()
     assert report.data == {
@@ -331,7 +333,7 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
                         "result": result,
                         **({} if result else {"state": "Pending"}),
                     },
-                    "Jira('test_jira_template_1')": issue_prereq,
+                    **issue_prereq,
                     "state": "InProgress" if result else "Pending",
                 }
             }
@@ -400,9 +402,7 @@ def test_run_rule_schedule_params(condition_expr, result, mock_pp, factory):
 
 
 def test_run_rule_jira_issue_unsupported_fields(factory):
-    jira_issue_prereq = factory.new_jira_issue_prerequisite(
-        "field_1: 1\n" "field_2: 2\n"
-    )
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("field_1: 1\nfield_2: 2\n")
     factory.new_rule(prerequisites=[jira_issue_prereq])
     expected_error = (
         f"Jira template {jira_issue_prereq.template!r} contains"
