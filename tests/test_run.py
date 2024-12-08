@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
 from datetime import UTC, date, datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from pytest import fixture, mark, raises
 
 from retasc.models.config import parse_config
 from retasc.models.prerequisites.condition import PrerequisiteCondition
+from retasc.models.prerequisites.rule import PrerequisiteRule
 from retasc.models.prerequisites.schedule import PrerequisiteSchedule
 from retasc.models.prerequisites.target_date import PrerequisiteTargetDate
+from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.product_pages_api import ProductPagesScheduleTask
 from retasc.run import parse_version, run
 
@@ -51,6 +53,56 @@ def test_run_rule_simple(factory):
     factory.new_rule(name="rule1")
     report = call_run()
     assert report.data == {"rhel": {"rhel-10.0": {"rule1": {"state": "Completed"}}}}
+
+
+def test_run_rule_update_state_once(factory, mock_pp):
+    """
+    Rule.update_state() is called exactly once (cached for later) for each
+    release.
+    """
+    releases = ["rhel-9.0", "rhel-10.0"]
+    mock_pp.active_releases.return_value = releases
+
+    condition_prereq = Mock(spec=PrerequisiteCondition)
+
+    counter = 0
+
+    def mock_update_state(context):
+        nonlocal counter
+        counter += 1
+        context.template.params["counter"] = counter
+        context.report.set("counter", counter)
+        return ReleaseRuleState.Completed
+
+    condition_prereq.update_state.side_effect = mock_update_state
+    condition_prereq.section_name.return_value = "TEST"
+
+    rule_dependency = factory.new_rule(prerequisites=[condition_prereq])
+    rule1 = factory.new_rule(
+        prerequisites=[PrerequisiteRule(rule=rule_dependency.name)]
+    )
+    rule2 = factory.new_rule(
+        prerequisites=[PrerequisiteRule(rule=rule_dependency.name)]
+    )
+    report = call_run()
+    expected_rule_data = {
+        f"Rule({rule_dependency.name!r})": {},
+        "state": "Completed",
+    }
+    assert report.data == {
+        "rhel": {
+            release: {
+                rule_dependency.name: {
+                    "TEST": {"counter": i},
+                    "state": "Completed",
+                },
+                rule1.name: expected_rule_data,
+                rule2.name: expected_rule_data,
+            }
+            for i, release in enumerate(releases, start=1)
+        }
+    }
+    assert len(condition_prereq.update_state.mock_calls) == 2
 
 
 def test_run_rule_jira_issue_create(factory, mock_jira):
