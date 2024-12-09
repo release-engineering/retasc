@@ -83,14 +83,8 @@ def test_run(arg, issue_key, capsys):
         "        state: InProgress",
         "      state: InProgress",
         "    Dependent Rule 1",
-        "      Schedule('TASK')",
-        "      TargetDate('start_date - 3|weeks')",
-        "        target_date: 1989-12-13",
         "      state: Completed",
         "    Dependent Rule 2",
-        "      Schedule('TASK')",
-        "      TargetDate('start_date - 2|weeks')",
-        "        target_date: 1989-12-20",
         "      state: Completed",
     ]
     actual_lines = [

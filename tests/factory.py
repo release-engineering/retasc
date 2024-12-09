@@ -15,6 +15,7 @@ class Factory:
     def __init__(self, tmpdir, rules_dict):
         self.tmpdir = tmpdir
         self.rules_dict = rules_dict
+        Rule.update_state.cache_clear()
 
     def new_rule(self, *, name=None, version=1, prerequisites=[], **kwargs):
         if name is None:
