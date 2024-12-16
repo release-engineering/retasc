@@ -26,7 +26,8 @@ class PrerequisiteSchedule(PrerequisiteBase):
     )
 
     def _params(self, context) -> dict:
-        schedule = context.pp.release_schedules(context.release)
+        release = context.template.params["release"]
+        schedule = context.pp.release_schedules(release)
         local_params = {"schedule": schedule}
 
         schedule_task = context.template.render(self.schedule_task, **local_params)
