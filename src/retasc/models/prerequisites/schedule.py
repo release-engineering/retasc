@@ -47,7 +47,8 @@ class PrerequisiteSchedule(PrerequisiteBase):
 
         Raises a HTTPError if the schedule task does not exist.
         """
-        schedule = context.pp.release_schedules(context.release)
+        release = context.template.params["release"]
+        schedule = context.pp.release_schedules(release)
         if schedule == {}:
             context.report.set("pending_reason", "No schedule available yet")
             return ReleaseRuleState.Pending

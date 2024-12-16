@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import retasc.models.config
 from retasc.models.release_rule_state import ReleaseRuleState
@@ -8,12 +8,12 @@ from retasc.models.release_rule_state import ReleaseRuleState
 class PrerequisiteBase(BaseModel):
     """Base class for rule prerequisites."""
 
-    class Config:
+    model_config = ConfigDict(
+        frozen=True,
         # Forbid extra attributes during model initialization.
         # This makes union types work correctly.
-        extra = "forbid"
-
-        frozen = True
+        extra="forbid",
+    )
 
     def validation_errors(
         self, rules, config: retasc.models.config.Config
