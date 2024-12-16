@@ -4,8 +4,15 @@ from unittest.mock import Mock
 from pydantic import ValidationError
 from pytest import raises
 
+from retasc.models.inputs.base import InputBase
 from retasc.models.prerequisites.base import PrerequisiteBase
 from retasc.models.rule import Rule
+
+
+def test_input_base():
+    base = InputBase()
+    with raises(NotImplementedError):
+        base.values(Mock())
 
 
 def test_prerequisite_base():
