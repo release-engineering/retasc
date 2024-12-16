@@ -13,6 +13,7 @@ def rule_dict():
     return {
         "version": 1,
         "name": "Example Rule",
+        "inputs": [{"product": "rhel"}],
         "prerequisites": [
             {"schedule_task": "GA for rhel {{ major }}.{{ minor }}"},
             {"condition": "today >= start_date + 5|days"},

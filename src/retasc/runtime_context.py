@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass
-from functools import cache
+from dataclasses import dataclass, field
 
 from requests import Session
 
@@ -24,6 +23,15 @@ def get_issue_id(issue, *, label_prefix):
     return f"retasc-no-id-{issue['key']}"
 
 
+def get_issues(jira, jira_labels, config) -> Iterator[tuple[str, dict]]:
+    jql = " AND ".join(f"labels={json.dumps(label)}" for label in jira_labels)
+    supported_fields = list(JIRA_REQUIRED_FIELDS.union(config.jira_fields.values()))
+    issues = jira.search_issues(jql=jql, fields=supported_fields)
+    for issue in issues:
+        issue_id = get_issue_id(issue, label_prefix=config.jira_label_prefix)
+        yield (issue_id, issue)
+
+
 @dataclass
 class RuntimeContext:
     rules: dict[str, Rule]
@@ -33,33 +41,22 @@ class RuntimeContext:
     session: Session
     report: Report
     config: Config
-    prerequisites_state: ReleaseRuleState = ReleaseRuleState.Pending
 
-    release: str = ""
-
-    def _issues(self) -> Iterator[tuple[str, dict]]:
-        jql = " AND ".join(f"labels={json.dumps(label)}" for label in self.jira_labels)
-        supported_fields = list(
-            JIRA_REQUIRED_FIELDS.union(self.config.jira_fields.values())
-        )
-        issues = self.jira.search_issues(jql=jql, fields=supported_fields)
-        for issue in issues:
-            issue_id = get_issue_id(issue, label_prefix=self.config.jira_label_prefix)
-            yield (issue_id, issue)
+    rules_states: dict[str, ReleaseRuleState] = field(default_factory=dict)
+    issues_cache: dict = field(default_factory=dict)
 
     @property
-    @cache
     def issues(self) -> dict[str, dict]:
-        return dict(self._issues())
+        labels = tuple(self.jira_labels)
+        issues = self.issues_cache.get(labels)
+        if issues is None:
+            issues = dict(get_issues(self.jira, labels, self.config))
+            self.issues_cache[labels] = issues
+        return issues
 
     @property
-    @cache
     def jira_labels(self) -> list[str]:
         return [
             self.template.render(template)
             for template in self.config.jira_label_templates
         ]
-
-    # Enable use in cached functions
-    def __hash__(self):
-        return hash(self.release)

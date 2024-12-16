@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+import json
 import logging
-import re
-from collections import defaultdict
 from collections.abc import Iterator
 
 from retasc.jira_client import DryRunJiraClient, JiraClient
 from retasc.models.config import Config
+from retasc.models.inputs.base import InputBase
 from retasc.models.parse_rules import parse_rules
-from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.models.rule import Rule
 from retasc.product_pages_api import ProductPagesApi
 from retasc.report import Report
@@ -17,44 +16,38 @@ from retasc.templates.template_manager import TemplateManager
 
 logger = logging.getLogger(__name__)
 
-RE_VERSION = re.compile(r"^\w+-(?P<major>\d+)(?:[-.](?P<minor>\d+))?")
 
+def rules_by_input(context: RuntimeContext) -> list[tuple[dict, list[Rule]]]:
+    result: dict[tuple, tuple[dict, list[Rule]]] = {}
+    input_values_cache: dict[InputBase, list[dict]] = {}
 
-def rules_by_product(rules: dict[str, Rule]) -> dict[str, list[Rule]]:
-    product_rules = defaultdict(list)
-    for rule in rules.values():
-        for product in rule.products:
-            product_rules[product].append(rule)
-    return product_rules
+    for rule in context.rules.values():
+        for input in rule.inputs:
+            input_values = input_values_cache.get(input)
+            if input_values is None:
+                input_values = list(input.values(context))
+                input_values_cache[input] = input_values
 
+            for values in input_values:
+                key = tuple(sorted(values.items()))
+                _, rules_for_input = result.setdefault(key, (values, []))
+                rules_for_input.append(rule)
 
-def parse_version(release: str) -> tuple[int, int]:
-    """
-    Parse version numbers (major, minor) from Product Pages release short name.
-    """
-    match = re.search(RE_VERSION, release)
-    if not match:
-        return 0, 0
-
-    x = match.groupdict(default=0)
-    return int(x["major"]), int(x["minor"])
+    return list(result.values())
 
 
 def update_state(rule: Rule, context: RuntimeContext):
     with context.report.section(rule.name):
-        context.prerequisites_state = ReleaseRuleState.Completed
         state = rule.update_state(context)
         context.report.set("state", state.name)
 
 
-def iterate_rules(context: RuntimeContext) -> Iterator[tuple[str, str, list[Rule]]]:
-    product_rules = rules_by_product(context.rules)
-    for product, rules in product_rules.items():
-        with context.report.section(product):
-            releases = context.pp.active_releases(product)
-            for release in releases:
-                with context.report.section(release):
-                    yield product, release, rules
+def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
+    input_rules = rules_by_input(context)
+    for input, rules in input_rules:
+        context.rules_states = {}
+        with context.report.section(f"input: {json.dumps(input)}"):
+            yield input, rules
 
 
 def drop_issues(context: RuntimeContext):
@@ -92,16 +85,9 @@ def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
         config=config,
     )
 
-    for product, release, rules in iterate_rules(context):
-        major, minor = parse_version(release)
+    for input, rules in iterate_rules(context):
         for rule in rules:
-            context.release = release
-            context.template.params = {
-                "product": product,
-                "release": release,
-                "major": major,
-                "minor": minor,
-            }
+            context.template.params = input.copy()
             update_state(rule, context)
 
         drop_issues(context)
