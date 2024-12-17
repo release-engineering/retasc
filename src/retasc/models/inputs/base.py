@@ -17,3 +17,7 @@ class InputBase(BaseModel):
     def values(self, context) -> Iterator[dict]:
         """Yield input dicts"""
         raise NotImplementedError()
+
+    def section_name(self, values: dict) -> str:
+        """Section name for given values."""
+        raise NotImplementedError()

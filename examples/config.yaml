@@ -9,7 +9,4 @@ jira_fields:
   project: project
   summary: summary
 
-jira_label_templates:
-  - retasc-managed
-  - "retasc-release-{{ release }}"
 jira_label_prefix: retasc-id-

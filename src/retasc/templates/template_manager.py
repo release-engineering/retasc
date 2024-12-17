@@ -12,11 +12,12 @@ type TemplateParams = dict[str, Any]
 
 @dataclass
 class TemplateManager:
+    template_search_path: Path
     params: TemplateParams = field(default_factory=dict)
 
-    def __init__(self, template_search_path: Path):
+    def __post_init__(self):
         self.env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(template_search_path),
+            loader=jinja2.FileSystemLoader(self.template_search_path),
             undefined=jinja2.StrictUndefined,
             autoescape=jinja2.select_autoescape(
                 enabled_extensions=("html", "xml"),

@@ -10,6 +10,18 @@ from retasc.models.release_rule_state import ReleaseRuleState
 SCHEMA_VERSION = 1
 
 
+def default_inputs() -> list[Input]:
+    return [
+        ProductPagesReleases(
+            product="rhel",
+            jira_label_templates=[
+                "retasc-managed",
+                "retasc-release-{{ release }}",
+            ],
+        )
+    ]
+
+
 class Rule(BaseModel):
     """
     Rule with prerequisites.
@@ -31,7 +43,7 @@ class Rule(BaseModel):
     name: str = Field(description="The name of the rule.")
     inputs: list[Input] = Field(
         description="Inputs for the rule",
-        default_factory=lambda: [ProductPagesReleases(product="rhel")],
+        default_factory=default_inputs,
     )
     prerequisites: list[Prerequisite] = Field(
         description="The prerequisites for the rule."
