@@ -51,7 +51,7 @@ def test_run(arg, issue_key, capsys):
     stdout, stderr = capsys.readouterr()
     assert stderr == ""
     expected_lines = [
-        'input: {"product": "rhel", "release": "rhel-10.0", "major": 10, "minor": 0}',
+        "ProductPagesRelease('rhel-10.0')",
         "  Example Rule",
         "    Condition('major >= 10')",
         "      result: True",
@@ -89,7 +89,7 @@ def test_run(arg, issue_key, capsys):
     actual_lines = [
         line
         for line in stdout.split("\n")
-        if line.startswith(" ") or line.startswith("input: ")
+        if line.startswith(" ") or line.startswith("ProductPagesRelease")
     ]
     assert expected_lines == actual_lines
 

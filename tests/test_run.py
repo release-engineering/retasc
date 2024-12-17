@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 from pytest import fixture, mark, raises
 
 from retasc.models.config import parse_config
+from retasc.models.inputs.jira_issues import JiraIssues
 from retasc.models.inputs.product_pages_releases import parse_version
 from retasc.models.prerequisites.condition import PrerequisiteCondition
 from retasc.models.prerequisites.rule import PrerequisiteRule
@@ -20,7 +21,7 @@ from .factory import Factory
 DUMMY_ISSUE = """
 summary: test
 """
-INPUT = 'input: {"product": "rhel", "release": "rhel-10.0", "major": 10, "minor": 0}'
+INPUT = "ProductPagesRelease('rhel-10.0')"
 
 
 def call_run():
@@ -92,7 +93,7 @@ def test_run_rule_update_state_once(factory, mock_pp):
         "state": "Completed",
     }
     inputs = (
-        'input: {"product": "rhel", "release": "rhel-9.0", "major": 9, "minor": 0}',
+        "ProductPagesRelease('rhel-9.0')",
         INPUT,
     )
     assert report.data == {
@@ -141,7 +142,7 @@ def test_run_rule_jira_issue_create_subtasks(factory, mock_jira):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(
         DUMMY_ISSUE, subtasks=subtasks
     )
-    condition = "issues | sort"
+    condition = "managed_jira_issues | sort"
     condition_prereq = PrerequisiteCondition(condition=condition)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq, condition_prereq])
     report = call_run()
@@ -464,3 +465,45 @@ def test_run_rule_jira_issue_reserved_labels(factory):
     )
     with raises(RuntimeError, match=expected_error):
         call_run()
+
+
+def test_run_rule_jira_issue_input(factory, mock_jira):
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "labels": ["test-label", "retasc-id-test1"],
+                "resolution": None,
+                "summary": "test",
+            },
+        },
+        {
+            "key": "TEST-2",
+            "fields": {
+                "labels": ["test-label"],
+                "resolution": None,
+                "summary": "test",
+            },
+        },
+    ]
+    condition = "[jira_issue_id, jira_issue]"
+    condition_prereq = PrerequisiteCondition(condition=condition)
+    rule = factory.new_rule(
+        inputs=[JiraIssues(jira_labels=["test-label"])],
+        prerequisites=[condition_prereq],
+    )
+    report = call_run()
+    assert report.data == {
+        f"JiraIssues('TEST-{i + 1}')": {
+            rule.name: {
+                f"Condition({condition!r})": {
+                    "result": [
+                        jira_issue_id,
+                        mock_jira.search_issues.return_value[i],
+                    ],
+                },
+                "state": "Completed",
+            }
+        }
+        for i, jira_issue_id in enumerate(["test1", "retasc-no-id-TEST-2"])
+    }
