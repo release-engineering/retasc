@@ -13,6 +13,8 @@ def test_input_base():
     base = InputBase()
     with raises(NotImplementedError):
         base.values(Mock())
+    with raises(NotImplementedError):
+        base.section_name({})
 
 
 def test_prerequisite_base():
