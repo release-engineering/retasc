@@ -14,12 +14,6 @@ class Config(BaseModel):
     product_pages_url: str = Field(description="Product Pages URL")
     jira_url: str = Field(description="Jira URL")
 
-    jira_label_templates: list[str] = Field(
-        description=(
-            "Label templates for the managed issues in Jira."
-            '\nExample: ["retasc-managed", "retasc-managed-{{ release }}"]'
-        )
-    )
     jira_label_prefix: str = Field(
         description="Prefix for labels identifying specific issue in Jira"
     )

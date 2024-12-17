@@ -50,8 +50,7 @@ def _edit_issue(
 
 
 def _report_jira_issue(issue: dict, jira_issue_id: str, context):
-    issues_params = context.template.params.setdefault("issues", {})
-    issues_params[jira_issue_id] = issue
+    context.managed_jira_issues[jira_issue_id] = issue
     context.report.set("issue", issue["key"])
 
 
@@ -103,8 +102,7 @@ def _update_issue(
 
     Returns the managed Jira issue.
     """
-    label = f"{context.config.jira_label_prefix}{jira_issue_id}"
-    issue = context.issues.pop(label, None)
+    issue = context.jira_issues.get(jira_issue_id, None)
 
     if issue:
         _report_jira_issue(issue, jira_issue_id, context)
@@ -118,6 +116,7 @@ def _update_issue(
     template_data = yaml().load(content)
     fields = _template_to_issue_data(template_data, context, template)
 
+    label = f"{context.config.jira_label_prefix}{jira_issue_id}"
     if issue:
         _edit_issue(
             issue, fields, context, label=label, parent_issue_key=parent_issue_key
