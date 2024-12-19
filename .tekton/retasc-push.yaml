@@ -14,7 +14,7 @@ metadata:
     appstudio.openshift.io/component: retasc
     pipelines.appstudio.openshift.io/type: build
   name: retasc-on-push
-  namespace: exd-sp-rhel-wf-tenant
+  namespace: cmelim-tenant
 spec:
   params:
   - name: git-url
@@ -22,7 +22,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/exd-sp-rhel-wf-tenant/retasc:{{revision}}
+    value: quay.io/redhat-user-workloads/cmelim-tenant/retasc:{{revision}}
   - name: dockerfile
     value: Containerfile
   pipelineSpec:
