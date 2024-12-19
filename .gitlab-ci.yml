@@ -13,6 +13,11 @@ default:
   tags:
     - docker
 
+workflow:
+  rules:
+    # Avoid running CI on automated dependency updates (often partial)
+    - if: '$CI_COMMIT_BRANCH !~ /^konflux\/mintmaker/'
+
 # code-scanning-container
 # Requires SONAR_TOKEN variable in GitLab project.
 include:
