@@ -15,6 +15,10 @@ class PrerequisiteTargetDate(PrerequisiteBase):
     The prerequisite state is Completed only if the target_date evaluates to a
     date in the past or it is today. Otherwise, the state is Pending.
 
+    Additionally, if ignore_drafts is true (the default value), the
+    prerequisite state is always Pending if the scheduled item is draft (i.e.
+    schedule_task_is_draft template parameter is true).
+
     Adds the following template parameters:
     - target_date - the evaluated target date
     """
@@ -28,12 +32,19 @@ class PrerequisiteTargetDate(PrerequisiteBase):
             - "today"
         """).strip(),
     )
+    ignore_drafts: bool = Field(
+        description="Ignore draft scheduled items if true (the default).", default=True
+    )
 
     def update_state(self, context) -> ReleaseRuleState:
         """
         Return Completed if target date is earlier than today,
         otherwise return Pending.
         """
+        if self.ignore_drafts and context.template.params["schedule_task_is_draft"]:
+            context.report.set("schedule_task_is_draft", True)
+            return ReleaseRuleState.Pending
+
         target_date = context.template.evaluate(self.target_date)
         context.template.params["target_date"] = target_date
         today = context.template.env.globals["today"]
