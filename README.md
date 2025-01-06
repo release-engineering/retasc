@@ -62,7 +62,9 @@ formatted and adhere to the expected schema (see the section below).
 
 Example of validating rule files with CLI:
 
-```
+```bash
+export RETASC_CONFIG=examples/config.yaml
+
 # validate all rules in a path recursively
 retasc validate-rules examples/rules
 

@@ -19,6 +19,7 @@ class PrerequisiteSchedule(PrerequisiteBase):
     - schedule_task - name of the schedule task
     - start_date - the schedule task's start_date
     - end_date - the schedule task's end_date
+    - schedule_task_is_draft - if schedule task is marked as draft
     """
 
     schedule_task: str = Field(
@@ -36,6 +37,7 @@ class PrerequisiteSchedule(PrerequisiteBase):
                 "schedule_task": schedule_task,
                 "start_date": task.start_date,
                 "end_date": task.end_date,
+                "schedule_task_is_draft": task.is_draft,
             }
         )
         return local_params

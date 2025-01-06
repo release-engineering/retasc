@@ -394,23 +394,26 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
 
 
 @mark.parametrize(
-    ("target_date", "result"),
+    ("target_date", "is_draft", "result"),
     (
-        ("start_date", True),
-        ("start_date - 1|weeks", True),
-        ("start_date + 1|weeks", True),
-        ("end_date - 1|weeks", True),
-        ("end_date + 1|weeks", False),
-        ("today", True),
-        ("today + 1|days", False),
-        ("today + 1|weeks", False),
+        ("start_date", False, True),
+        ("start_date", True, False),
+        ("start_date - 1|weeks", False, True),
+        ("start_date + 1|weeks", False, True),
+        ("end_date - 1|weeks", False, True),
+        ("end_date + 1|weeks", False, False),
+        ("today", False, True),
+        ("today", True, False),
+        ("today + 1|days", False, False),
+        ("today + 1|weeks", False, False),
     ),
 )
-def test_run_rule_schedule_target_date(target_date, result, mock_pp, factory):
+def test_run_rule_schedule_target_date(target_date, is_draft, result, mock_pp, factory):
     mock_pp.release_schedules.return_value = {
         "TASK": ProductPagesScheduleTask(
             start_date=date(1990, 1, 1),
             end_date=datetime.now(UTC).date(),
+            is_draft=is_draft,
         ),
     }
     rule = factory.new_rule(

@@ -26,8 +26,24 @@ def test_active_releases(pp_api, requests_mock):
 
 def test_release_schedules(pp_api, requests_mock):
     schedules = [
-        {"name": "task1", "date_start": "2024-10-01", "date_finish": "2024-10-02"},
-        {"name": "task2", "date_start": "2024-11-20", "date_finish": "2024-11-21"},
+        {
+            "name": "task1",
+            "date_start": "2024-10-01",
+            "date_finish": "2024-10-02",
+            "draft": False,
+        },
+        {
+            "name": "task2",
+            "date_start": "2024-11-20",
+            "date_finish": "2024-11-21",
+            "draft": False,
+        },
+        {
+            "name": "task3",
+            "date_start": "2024-11-21",
+            "date_finish": "2024-11-22",
+            "draft": True,
+        },
     ]
     requests_mock.get(
         f"{PP_URL}/releases/example_product/schedule-tasks",
@@ -42,5 +58,10 @@ def test_release_schedules(pp_api, requests_mock):
         "task2": ProductPagesScheduleTask(
             start_date=date(2024, 11, 20),
             end_date=date(2024, 11, 21),
+        ),
+        "task3": ProductPagesScheduleTask(
+            start_date=date(2024, 11, 21),
+            end_date=date(2024, 11, 22),
+            is_draft=True,
         ),
     }

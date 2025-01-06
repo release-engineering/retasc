@@ -14,6 +14,7 @@ from requests import Session
 class ProductPagesScheduleTask:
     start_date: date
     end_date: date
+    is_draft: bool = False
 
 
 class ProductPagesApi:
@@ -49,13 +50,16 @@ class ProductPagesApi:
         :return: dict with schedule name as key and start date as value
         """
         url = f"{self.api_url}/releases/{release_short_name}/schedule-tasks"
-        res = self.session.get(url, params={"fields": "name,date_start,date_finish"})
+        res = self.session.get(
+            url, params={"fields": "name,date_start,date_finish,draft"}
+        )
         res.raise_for_status()
         data = res.json()
         return {
             item["name"]: ProductPagesScheduleTask(
                 start_date=date.fromisoformat(item["date_start"]),
                 end_date=date.fromisoformat(item["date_finish"]),
+                is_draft=item["draft"],
             )
             for item in data
         }
