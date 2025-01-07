@@ -140,11 +140,11 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
     """
     Prerequisite Jira issue.
 
-    If the issue does not exist, the issue is created. Otherwise, it is updated
-    if it is not yet resolved.
+    If the issue does not exist, ReTaSC will create it and keep it updated
+    until it is resolved.
 
-    After the Jira issue is resolved the prerequisite state is Completed,
-    otherwise it is InProgress.
+    The prerequisite state is InProgress until the Jira issue is resolved.
+    After that, the state is Completed.
 
     Root directory for templates files is indicated with "jira_template_path"
     option in ReTaSC configuration, and "jira_fields" option declares supported
