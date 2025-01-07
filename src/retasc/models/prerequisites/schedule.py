@@ -18,7 +18,7 @@ class PrerequisiteSchedule(PrerequisiteBase):
     - schedule - dict with all schedules for the current release
     - schedule_task - name of the schedule task
     - start_date - the schedule task's start_date
-    - end_date - the schedule task's start_date
+    - end_date - the schedule task's end_date
     """
 
     schedule_task: str = Field(
