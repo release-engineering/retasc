@@ -8,16 +8,16 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
-def requests_session():
+def requests_session(*, retry_on_statuses: tuple = ()):
     """Returns https session for request processing."""
 
     session = requests.Session()
     retry = Retry(
-        total=3,
+        total=5,
         read=3,
         connect=3,
         backoff_factor=1,
-        status_forcelist=(500, 502, 503, 504),
+        status_forcelist=(*retry_on_statuses, 500, 502, 503, 504),
         allowed_methods=Retry.DEFAULT_ALLOWED_METHODS.union(("POST",)),
     )
     adapter = HTTPAdapter(max_retries=retry)

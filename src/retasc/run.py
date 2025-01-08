@@ -71,8 +71,13 @@ def drop_issues(context: RuntimeContext):
 
 def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
     session = requests_session()
+
+    # Retry also on 401 to workaround for a Jira bug
+    # https://github.com/atlassian-api/atlassian-python-api/issues/257
+    jira_session = requests_session(retry_on_statuses=(401,))
+
     jira_cls = DryRunJiraClient if dry_run else JiraClient
-    jira = jira_cls(api_url=config.jira_url, token=jira_token, session=session)
+    jira = jira_cls(api_url=config.jira_url, token=jira_token, session=jira_session)
     pp = ProductPagesApi(config.product_pages_url, session=session)
     rules = parse_rules(config.rules_path, config=config)
     template = TemplateManager(config.jira_template_path)
