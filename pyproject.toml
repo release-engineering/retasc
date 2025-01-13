@@ -8,7 +8,7 @@ authors = [
 license = "GPL-3.0-or-later"
 readme = "README.md"
 packages = [{include = "retasc", from = "src"}]
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.12,<3.14"
 dependencies = [
   "opentelemetry-sdk~=1.26.0",
   "opentelemetry-instrumentation-flask~=0.47b0",
