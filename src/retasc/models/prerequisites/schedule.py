@@ -26,10 +26,8 @@ class PrerequisiteSchedule(PrerequisiteBase):
         description="The name of the Product Pages schedule item."
     )
 
-    def _params(self, context) -> dict:
-        schedule = context.pp.release_schedules(context.release)
+    def _params(self, schedule: dict, context) -> dict:
         local_params = {"schedule": schedule}
-
         schedule_task = context.template.render(self.schedule_task, **local_params)
         task = schedule[schedule_task]
         local_params.update(
@@ -49,7 +47,12 @@ class PrerequisiteSchedule(PrerequisiteBase):
 
         Raises a HTTPError if the schedule task does not exist.
         """
-        local_params = self._params(context)
+        schedule = context.pp.release_schedules(context.release)
+        if schedule == {}:
+            context.report.set("pending_reason", "No schedule available yet")
+            return ReleaseRuleState.Pending
+
+        local_params = self._params(schedule, context)
         context.template.params.update(local_params)
         return ReleaseRuleState.Completed
 
