@@ -428,6 +428,20 @@ def test_run_rule_schedule_target_date(target_date, is_draft, result, mock_pp, f
     assert report.data["rhel"]["rhel-10.0"][rule.name]["state"] == state
 
 
+def test_run_rule_schedule_missing(mock_pp, factory):
+    mock_pp.release_schedules.return_value = {}
+    rule = factory.new_rule(prerequisites=[PrerequisiteSchedule(schedule_task="TASK")])
+
+    report = call_run()
+    assert report.data["rhel"]["rhel-10.0"][rule.name] == {
+        "Schedule('TASK')": {
+            "state": "Pending",
+            "pending_reason": "No schedule available yet",
+        },
+        "state": "Pending",
+    }
+
+
 @mark.parametrize(
     ("condition_expr", "result"),
     (
