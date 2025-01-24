@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
+import re
 from datetime import UTC, date, datetime
 from unittest.mock import ANY, Mock, call, patch
 
@@ -30,7 +31,7 @@ def call_run():
 
 
 def issue_labels(issue_id: str) -> list[str]:
-    return [f"retasc-id-{issue_id}", "retasc-managed", "retasc-release-rhel-10.0"]
+    return [f"retasc-id-{issue_id}"]
 
 
 @fixture
@@ -134,16 +135,18 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
     )
 
 
-def test_run_rule_jira_search_once_per_release(factory, mock_jira, mock_pp):
+def test_run_rule_jira_search_once_per_prerequisite(factory, mock_jira, mock_pp):
     releases = ["rhel-10.0", "rhel-9.9"]
     mock_pp.active_releases.return_value = releases
-    jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE)
-    rules = [factory.new_rule(prerequisites=[jira_issue_prereq]) for _ in range(3)]
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        DUMMY_ISSUE, jira_issue_id="test-{{ release }}"
+    )
+    rules = [factory.new_rule(prerequisites=[jira_issue_prereq]) for _ in range(2)]
     report = call_run()
     assert report.data == {
         f"ProductPagesRelease('{release}')": {
             rule.name: {
-                "Jira('test_jira_template_1')": {
+                f"Jira('test-{release}')": {
                     "create": '{"summary": "test"}',
                     "issue": ANY,
                     "state": "InProgress",
@@ -156,10 +159,11 @@ def test_run_rule_jira_search_once_per_release(factory, mock_jira, mock_pp):
     }
     assert mock_jira.search_issues.mock_calls == [
         call(
-            jql=f'labels="retasc-managed" AND labels="retasc-release-{release}"',
-            fields=["description", "labels", "project", "resolution", "summary"],
+            jql=f'labels="retasc-id-test-{release}"',
+            fields=["labels", "resolution", "summary"],
         )
         for release in releases
+        for _ in range(2)
     ]
 
 
@@ -171,13 +175,12 @@ def test_run_rule_jira_search_once_per_jql(factory, mock_jira):
             "fields": {
                 "labels": ["test-label"],
                 "description": f"This is {issue_id}",
-                "resolution": None,
             },
         }
         for issue_id in issue_ids
     ]
     jql = "labels=test-label"
-    input = JiraIssues(jql=jql)
+    input = JiraIssues(jql=jql, fields=["description"])
     condition = "[jira_issue.key, jira_issue.fields.description]"
     condition_prereq = PrerequisiteCondition(condition=condition)
     rules = [
@@ -197,15 +200,10 @@ def test_run_rule_jira_search_once_per_jql(factory, mock_jira):
         }
         for issue_id in issue_ids
     }
-    assert mock_jira.search_issues.mock_calls == [
-        call(
-            jql=jql,
-            fields=["description", "labels", "project", "resolution", "summary"],
-        )
-    ]
+    assert mock_jira.search_issues.mock_calls == [call(jql=jql, fields=["description"])]
 
 
-def test_run_rule_jira_issue_create_subtasks(factory, mock_jira):
+def test_run_rule_jira_issue_create_subtasks(factory):
     subtasks = [
         factory.new_jira_subtask(DUMMY_ISSUE),
         factory.new_jira_subtask(DUMMY_ISSUE),
@@ -213,7 +211,7 @@ def test_run_rule_jira_issue_create_subtasks(factory, mock_jira):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(
         DUMMY_ISSUE, subtasks=subtasks
     )
-    condition = "managed_jira_issues | sort"
+    condition = "jira_issues | default([]) | sort"
     condition_prereq = PrerequisiteCondition(condition=condition)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq, condition_prereq])
     report = call_run()
@@ -271,6 +269,31 @@ def test_run_rule_jira_issue_in_progress(factory, mock_jira):
             }
         }
     }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_not_called()
+
+
+def test_run_rule_jira_issue_not_unique(factory, mock_jira):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE)
+    factory.new_rule(prerequisites=[jira_issue_prereq])
+    mock_jira.search_issues.return_value = [
+        {
+            "key": f"TEST-{i}",
+            "fields": {
+                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+                "resolution": None,
+                "summary": "test",
+            },
+        }
+        for i in [1, 2]
+    ]
+
+    expected_error = re.escape(
+        "Found multiple issues with the same ID label 'retasc-id-test_jira_template_1': 'TEST-1', 'TEST-2'"
+    )
+    with raises(RuntimeError, match=expected_error):
+        call_run()
+
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_not_called()
 
@@ -358,55 +381,6 @@ def test_run_rule_jira_issue_completed(factory, mock_jira):
                 "Jira('test_jira_template_1')": {"issue": "TEST-1"},
                 "state": "Completed",
             }
-        }
-    }
-
-
-def test_run_rule_jira_issue_drop(factory, mock_jira):
-    jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE)
-    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
-    mock_jira.search_issues.return_value = [
-        {
-            "key": "TEST-1",
-            "fields": {
-                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
-                "summary": "test",
-                "resolution": None,
-            },
-        },
-        {
-            "key": "TEST-2",
-            "fields": {
-                "labels": issue_labels("test_jira_template_2"),
-                "resolution": None,
-            },
-        },
-        {
-            "key": "TEST-3",
-            "fields": {
-                "labels": ["retasc-managed"],
-                "resolution": None,
-            },
-        },
-        {
-            "key": "TEST-4",
-            "fields": {
-                "labels": ["retasc-managed"],
-                "resolution": "Closed",
-            },
-        },
-    ]
-    report = call_run()
-    assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
-            },
-            "dropped_issues": ["TEST-2", "TEST-3"],
         }
     }
 
@@ -559,39 +533,28 @@ def test_run_rule_jira_issue_input(factory, mock_jira):
     mock_jira.search_issues.return_value = [
         {
             "key": "TEST-1",
-            "fields": {
-                "labels": ["test-label", "retasc-id-test1"],
-                "resolution": None,
-                "summary": "test",
-            },
+            "fields": {},
         },
         {
             "key": "TEST-2",
-            "fields": {
-                "labels": ["test-label"],
-                "resolution": None,
-                "summary": "test",
-            },
+            "fields": {},
         },
     ]
-    condition = "[jira_issue_id, jira_issue]"
+    condition = "jira_issue"
     condition_prereq = PrerequisiteCondition(condition=condition)
     rule = factory.new_rule(
-        inputs=[JiraIssues(jql="labels=test-label")],
+        inputs=[JiraIssues(jql="labels=test-label", fields=[])],
         prerequisites=[condition_prereq],
     )
     report = call_run()
     assert report.data == {
-        f"JiraIssues('TEST-{i + 1}')": {
+        f"JiraIssues('TEST-{i}')": {
             rule.name: {
                 f"Condition({condition!r})": {
-                    "result": [
-                        jira_issue_id,
-                        mock_jira.search_issues.return_value[i],
-                    ],
+                    "result": issue,
                 },
                 "state": "Completed",
             }
         }
-        for i, jira_issue_id in enumerate(["test1", "retasc-no-id-TEST-2"])
+        for i, issue in enumerate(mock_jira.search_issues.return_value, start=1)
     }

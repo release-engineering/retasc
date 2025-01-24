@@ -51,19 +51,6 @@ def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
             yield values, rules
 
 
-def drop_issues(context: RuntimeContext):
-    to_drop = [
-        issue["key"]
-        for issue_id, issue in context.jira_issues.items()
-        if not issue["fields"]["resolution"]
-        and issue_id not in context.managed_jira_issues
-    ]
-    if not to_drop:
-        return
-
-    context.report.set("dropped_issues", to_drop)
-
-
 def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
     session = requests_session()
 
@@ -91,8 +78,6 @@ def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
         for rule in rules:
             context.template.params = input.copy()
             update_state(rule, context)
-
-        drop_issues(context)
 
     if dry_run:
         logger.warning("To apply changes, run without --dry-run flag")

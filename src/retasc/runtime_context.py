@@ -23,15 +23,3 @@ class RuntimeContext:
     config: Config
 
     rules_states: dict[str, ReleaseRuleState] = field(default_factory=dict)
-
-    @property
-    def jira_issues(self) -> dict[str, dict]:
-        return self.template.params.setdefault("jira_issues", {})
-
-    @property
-    def managed_jira_issues(self) -> dict[str, dict]:
-        return self.template.params.setdefault("managed_jira_issues", {})
-
-    @property
-    def jira_labels(self) -> list[str]:
-        return self.template.params.setdefault("jira_labels", [])

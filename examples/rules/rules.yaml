@@ -8,14 +8,14 @@
     - target_date: "start_date - 7|days"
     - rule: "Dependent Rule 1"
     - rule: "Dependent Rule 2"
-    - jira_issue_id: main
+    - jira_issue_id: main_{{ release }}
       template: "main.yaml.j2"
       subtasks:
-        - id: add_beta_repos
+        - id: add_beta_repos_{{ release }}
           template: "add_beta_repos.yaml.j2"
-        - id: notify_team
+        - id: notify_team_{{ release }}
           template: "notify_team.yaml.j2"
-    - jira_issue_id: secondary
+    - jira_issue_id: secondary_{{ release }}
       template: "secondary.yaml.j2"
 
 - version: 1

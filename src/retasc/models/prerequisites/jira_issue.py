@@ -3,6 +3,7 @@ import json
 import os
 from collections.abc import Iterator
 from itertools import takewhile
+from textwrap import dedent
 
 from pydantic import BaseModel, Field
 
@@ -12,11 +13,19 @@ from retasc.yaml import yaml
 
 from .base import PrerequisiteBase
 
-ISSUE_ID_DESCRIPTION = "Unique identifier for the issue."
+ISSUE_ID_DESCRIPTION = dedent("""
+    Template for unique label name to identify the issue.
+
+    Note: The label in Jira will be prefixed with "jira_label_prefix"
+    configuration.
+
+    Example: "add_beta_repos_for_{{ release }}"
+""").strip()
 TEMPLATE_PATH_DESCRIPTION = (
     "Path to the Jira issue template YAML file"
     ' relative to the "jira_template_path" configuration.'
 )
+JIRA_REQUIRED_FIELDS = frozenset(["labels", "resolution"])
 
 
 def _is_resolved(issue: dict) -> bool:
@@ -35,8 +44,7 @@ def _edit_issue(
         k: v for k, v in fields.items() if issue["fields"][k] != v and k != "labels"
     }
 
-    required_labels = {label, *context.jira_labels}
-    labels = required_labels.union(fields.get("labels", []))
+    labels = {label, *fields.get("labels", [])}
     current_labels = set(issue["fields"]["labels"])
     if labels != current_labels:
         to_update["labels"] = sorted(labels)
@@ -50,7 +58,8 @@ def _edit_issue(
 
 
 def _report_jira_issue(issue: dict, jira_issue_id: str, context):
-    context.managed_jira_issues[jira_issue_id] = issue
+    jira_issues = context.template.params.setdefault("jira_issues", {})
+    jira_issues[jira_issue_id] = issue
     context.report.set("issue", issue["key"])
 
 
@@ -59,7 +68,7 @@ def _create_issue(
 ) -> dict:
     context.report.set("create", json.dumps(fields))
     _set_parent_issue(fields, parent_issue_key)
-    fields.setdefault("labels", []).extend([label, *context.jira_labels])
+    fields.setdefault("labels", []).append(label)
     return context.jira.create_issue(fields)
 
 
@@ -92,6 +101,15 @@ def _template_to_issue_data(template_data: dict, context, template: str) -> dict
     return fields
 
 
+def _render_issue_template(template: str, context) -> dict:
+    with open(context.config.jira_template_path / template) as f:
+        template_content = f.read()
+
+    content = context.template.render(template_content)
+    template_data = yaml().load(content)
+    return _template_to_issue_data(template_data, context, template)
+
+
 def _update_issue(
     jira_issue_id: str, template: str, context, parent_issue_key: str | None = None
 ) -> dict:
@@ -102,30 +120,31 @@ def _update_issue(
 
     Returns the managed Jira issue.
     """
-    issue = context.jira_issues.get(jira_issue_id, None)
+    fields = _render_issue_template(template, context)
 
-    if issue:
-        _report_jira_issue(issue, jira_issue_id, context)
-        if _is_resolved(issue):
-            return issue
-
-    with open(context.config.jira_template_path / template) as f:
-        template_content = f.read()
-
-    content = context.template.render(template_content)
-    template_data = yaml().load(content)
-    fields = _template_to_issue_data(template_data, context, template)
-
+    supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
     label = f"{context.config.jira_label_prefix}{jira_issue_id}"
-    if issue:
-        _edit_issue(
-            issue, fields, context, label=label, parent_issue_key=parent_issue_key
-        )
-        return issue
+    jql = f"labels={json.dumps(label)}"
+    issues = context.jira.search_issues(jql=jql, fields=sorted(supported_fields))
 
-    issue = _create_issue(
-        fields, context, label=label, parent_issue_key=parent_issue_key
-    )
+    if issues:
+        if len(issues) > 1:
+            keys = to_comma_separated(issue["key"] for issue in issues)
+            raise RuntimeError(
+                f"Found multiple issues with the same ID label {label!r}: {keys}"
+            )
+
+        issue = issues[0]
+
+        if not _is_resolved(issue):
+            _edit_issue(
+                issue, fields, context, label=label, parent_issue_key=parent_issue_key
+            )
+    else:
+        issue = _create_issue(
+            fields, context, label=label, parent_issue_key=parent_issue_key
+        )
+
     _report_jira_issue(issue, jira_issue_id, context)
     return issue
 
@@ -188,20 +207,23 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
         If the issue exists or is created, it is added into "issues" dict
         template parameter (dict key is jira_issue_id).
         """
-        issue = _update_issue(self.jira_issue_id, self.template, context)
+        jira_issue_id = context.template.render(self.jira_issue_id)
+        issue = _update_issue(jira_issue_id, self.template, context)
         if _is_resolved(issue):
             return ReleaseRuleState.Completed
 
         for subtask in self.subtasks:
-            with context.report.section(f"Subtask({subtask.id!r})"):
+            subtask_id = context.template.render(subtask.id)
+            with context.report.section(f"Subtask({subtask_id!r})"):
                 _update_issue(
                     subtask.id, subtask.template, context, parent_issue_key=issue["key"]
                 )
 
         return ReleaseRuleState.InProgress
 
-    def section_name(self) -> str:
-        return f"Jira({self.jira_issue_id!r})"
+    def section_name(self, context) -> str:
+        jira_issue_id = context.template.render(self.jira_issue_id)
+        return f"Jira({jira_issue_id!r})"
 
 
 def templates_root() -> str:

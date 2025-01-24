@@ -29,5 +29,5 @@ class PrerequisiteCondition(PrerequisiteBase):
         context.report.set("result", is_completed)
         return ReleaseRuleState.Completed if is_completed else ReleaseRuleState.Pending
 
-    def section_name(self) -> str:
+    def section_name(self, context) -> str:
         return f"Condition({self.condition!r})"

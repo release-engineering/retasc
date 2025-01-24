@@ -11,15 +11,7 @@ SCHEMA_VERSION = 1
 
 
 def default_inputs() -> list[Input]:
-    return [
-        ProductPagesReleases(
-            product="rhel",
-            jira_label_templates=[
-                "retasc-managed",
-                "retasc-release-{{ release }}",
-            ],
-        )
-    ]
+    return [ProductPagesReleases(product="rhel")]
 
 
 class Rule(BaseModel):
@@ -68,7 +60,7 @@ class Rule(BaseModel):
             if rule_state == ReleaseRuleState.Pending:
                 break
 
-            with context.report.section(prereq.section_name()):
+            with context.report.section(prereq.section_name(context)):
                 state = prereq.update_state(context)
                 if state != ReleaseRuleState.Completed:
                     context.report.set("state", state.name)
