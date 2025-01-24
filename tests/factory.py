@@ -44,10 +44,12 @@ class Factory:
         jira_issue_id, file = self.new_jira_template_file(template)
         return JiraIssueTemplate(id=jira_issue_id, template=file)
 
-    def new_jira_issue_prerequisite(self, template, *, subtasks=[]):
-        jira_issue_id, file = self.new_jira_template_file(template)
+    def new_jira_issue_prerequisite(
+        self, template, *, jira_issue_id: str = "", subtasks=[]
+    ):
+        jira_issue_id_, file = self.new_jira_template_file(template)
         return PrerequisiteJiraIssue(
-            jira_issue_id=jira_issue_id,
+            jira_issue_id=jira_issue_id or jira_issue_id_,
             template=file,
             subtasks=subtasks,
         )

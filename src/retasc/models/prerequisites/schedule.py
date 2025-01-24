@@ -57,5 +57,5 @@ class PrerequisiteSchedule(PrerequisiteBase):
         context.template.params.update(local_params)
         return ReleaseRuleState.Completed
 
-    def section_name(self) -> str:
+    def section_name(self, context) -> str:
         return f"Schedule({self.schedule_task!r})"

@@ -55,5 +55,5 @@ class PrerequisiteTargetDate(PrerequisiteBase):
             return ReleaseRuleState.Pending
         return ReleaseRuleState.Completed
 
-    def section_name(self) -> str:
+    def section_name(self, context) -> str:
         return f"TargetDate({self.target_date!r})"

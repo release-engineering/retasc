@@ -22,9 +22,15 @@ class PrerequisiteBase(BaseModel):
         return []
 
     def update_state(self, context) -> ReleaseRuleState:
-        """Update template variables if needed and returns current state."""
+        """
+        Called by parent rule to update any state and template variables.
+
+        Called only if no previous prerequisite returned Pending state.
+
+        Returns new prerequisite state.
+        """
         raise NotImplementedError()
 
-    def section_name(self) -> str:
+    def section_name(self, context) -> str:
         """Section name in report."""
         raise NotImplementedError()

@@ -23,7 +23,7 @@ def test_prerequisite_base():
     with raises(NotImplementedError):
         base.update_state(Mock())
     with raises(NotImplementedError):
-        base.section_name()
+        base.section_name(Mock())
 
 
 def test_invalid_prerequisite_type(rule_dict):
