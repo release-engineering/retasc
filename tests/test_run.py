@@ -25,8 +25,9 @@ summary: test
 INPUT = "ProductPagesRelease('rhel-10.0')"
 
 
-def call_run():
+def call_run(*, additional_jira_fields: dict = {}):
     config = parse_config("examples/config.yaml")
+    config.jira_fields.update(additional_jira_fields)
     return run(config=config, jira_token="", dry_run=False)
 
 
@@ -360,6 +361,113 @@ def test_run_rule_jira_issue_update_labels(factory, mock_jira):
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once_with("TEST-1", {"labels": expected_labels})
+
+
+def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("""
+        assignee: {key: alice}
+    """)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    current_value = {"name": "Bob", "key": "bob"}
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "assignee": current_value,
+                "labels": ["retasc-id-test_jira_template_1"],
+                "resolution": None,
+            },
+        }
+    ]
+    expected_fields = {"assignee": {"key": "alice"}}
+    report = call_run(additional_jira_fields={"assignee": "assignee"})
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Jira('test_jira_template_1')": {
+                    "issue": "TEST-1",
+                    "update": json.dumps(expected_fields),
+                    "state": "InProgress",
+                },
+                "state": "InProgress",
+            }
+        }
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_fields)
+
+    current_value["key"] = "alice"
+    current_value["name"] = "Alice"
+    report = call_run(additional_jira_fields={"assignee": "assignee"})
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Jira('test_jira_template_1')": {
+                    "issue": "TEST-1",
+                    "state": "InProgress",
+                },
+                "state": "InProgress",
+            }
+        }
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once()
+
+
+def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("""
+        service:
+          value: gating
+          child:
+            value: waiverdb
+    """)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    current_value = {"value": "gating", "child": {"id": "123", "value": "greenwave"}}
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "customfield_123": current_value,
+                "labels": ["retasc-id-test_jira_template_1"],
+                "resolution": None,
+            },
+        }
+    ]
+    expected_fields = {
+        "customfield_123": {"value": "gating", "child": {"value": "waiverdb"}}
+    }
+    additional_jira_fields = {"service": "customfield_123"}
+    report = call_run(additional_jira_fields=additional_jira_fields)
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Jira('test_jira_template_1')": {
+                    "issue": "TEST-1",
+                    "update": json.dumps(expected_fields),
+                    "state": "InProgress",
+                },
+                "state": "InProgress",
+            }
+        }
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_fields)
+
+    current_value["child"]["value"] = "waiverdb"
+    report = call_run(additional_jira_fields=additional_jira_fields)
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Jira('test_jira_template_1')": {
+                    "issue": "TEST-1",
+                    "state": "InProgress",
+                },
+                "state": "InProgress",
+            }
+        }
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once()
 
 
 def test_run_rule_jira_issue_completed(factory, mock_jira):
