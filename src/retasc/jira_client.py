@@ -43,7 +43,11 @@ class JiraClient:
         """
 
         logger.info("Updating Jira issue %r with fields: %r", issue_key, fields)
-        self.jira.edit_issue(issue_key, fields, notify_users=notify_users)
+        base_url = self.jira.resource_url("issue")
+        url = f"{base_url}/{issue_key}"
+        self.jira.put(
+            url, data={"fields": fields}, params={"notifyUsers": notify_users}
+        )
 
     @tracer.start_as_current_span("JiraClient.create_issue")
     def create_issue(self, fields: dict) -> dict:

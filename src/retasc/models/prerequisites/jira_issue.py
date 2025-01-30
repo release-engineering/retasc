@@ -37,11 +37,23 @@ def _set_parent_issue(fields: dict, parent_issue_key: str | None = None):
         fields["parent"] = {"key": parent_issue_key}
 
 
+def _is_jira_field_up_to_date(current_value, new_value):
+    if isinstance(current_value, dict) and isinstance(new_value, dict):
+        return all(
+            _is_jira_field_up_to_date(current_value.get(k), v)
+            for k, v in new_value.items()
+        )
+
+    return current_value == new_value
+
+
 def _edit_issue(
     issue, fields, context, label: str, parent_issue_key: str | None = None
 ):
     to_update = {
-        k: v for k, v in fields.items() if issue["fields"][k] != v and k != "labels"
+        k: v
+        for k, v in fields.items()
+        if k != "labels" and not _is_jira_field_up_to_date(issue["fields"][k], v)
     }
 
     labels = {label, *fields.get("labels", [])}
