@@ -181,11 +181,11 @@ def test_run_rule_jira_search_once_per_jql(factory, mock_jira):
         for issue_id in issue_ids
     ]
     jql = "labels=test-label"
-    input = JiraIssues(jql=jql, fields=["description"])
+    input_issues = JiraIssues(jql=jql, fields=["description"])
     condition = "[jira_issue.key, jira_issue.fields.description]"
     condition_prereq = PrerequisiteCondition(condition=condition)
     rules = [
-        factory.new_rule(inputs=[input], prerequisites=[condition_prereq])
+        factory.new_rule(inputs=[input_issues], prerequisites=[condition_prereq])
         for _ in range(2)
     ]
     report = call_run()
