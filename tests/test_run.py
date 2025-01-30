@@ -120,7 +120,7 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
         INPUT: {
             rule.name: {
                 "Jira('test_jira_template_1')": {
-                    "create": '{"summary": "test"}',
+                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
                     "issue": "TEST-1",
                     "state": "InProgress",
                 },
@@ -148,7 +148,7 @@ def test_run_rule_jira_search_once_per_prerequisite(factory, mock_jira, mock_pp)
         f"ProductPagesRelease('{release}')": {
             rule.name: {
                 f"Jira('test-{release}')": {
-                    "create": '{"summary": "test"}',
+                    "create": f'{{"summary": "test", "labels": ["retasc-id-test-{release}"]}}',
                     "issue": ANY,
                     "state": "InProgress",
                 },
@@ -220,15 +220,15 @@ def test_run_rule_jira_issue_create_subtasks(factory):
         INPUT: {
             rule.name: {
                 "Jira('test_jira_template_3')": {
-                    "create": '{"summary": "test"}',
+                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_3"]}',
                     "issue": "TEST-1",
                     "state": "InProgress",
                     "Subtask('test_jira_template_1')": {
-                        "create": '{"summary": "test"}',
+                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
                         "issue": "TEST-2",
                     },
                     "Subtask('test_jira_template_2')": {
-                        "create": '{"summary": "test"}',
+                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_2"]}',
                         "issue": "TEST-3",
                     },
                 },
@@ -512,7 +512,7 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
     if result:
         issue_prereq = {
             "Jira('test_jira_template_1')": {
-                "create": '{"summary": "test"}',
+                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
                 "issue": "TEST-1",
                 "state": "InProgress",
             }

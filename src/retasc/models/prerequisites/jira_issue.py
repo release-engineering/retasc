@@ -78,9 +78,9 @@ def _report_jira_issue(issue: dict, jira_issue_id: str, context):
 def _create_issue(
     fields, context, label: str, parent_issue_key: str | None = None
 ) -> dict:
+    fields.setdefault("labels", []).append(label)
     context.report.set("create", json.dumps(fields))
     _set_parent_issue(fields, parent_issue_key)
-    fields.setdefault("labels", []).append(label)
     return context.jira.create_issue(fields)
 
 
@@ -228,7 +228,7 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
             subtask_id = context.template.render(subtask.id)
             with context.report.section(f"Subtask({subtask_id!r})"):
                 _update_issue(
-                    subtask.id, subtask.template, context, parent_issue_key=issue["key"]
+                    subtask_id, subtask.template, context, parent_issue_key=issue["key"]
                 )
 
         return ReleaseRuleState.InProgress
