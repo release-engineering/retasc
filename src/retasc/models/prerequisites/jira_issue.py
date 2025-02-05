@@ -70,8 +70,7 @@ def _edit_issue(
 
 
 def _report_jira_issue(issue: dict, jira_issue_id: str, context):
-    jira_issues = context.template.params.setdefault("jira_issues", {})
-    jira_issues[jira_issue_id] = issue
+    context.report.jira_issues[jira_issue_id] = issue
     context.report.set("issue", issue["key"])
 
 

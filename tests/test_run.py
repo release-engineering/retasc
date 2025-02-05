@@ -666,3 +666,99 @@ def test_run_rule_jira_issue_input(factory, mock_jira):
         }
         for i, issue in enumerate(mock_jira.search_issues.return_value, start=1)
     }
+
+
+def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
+    """
+    Jira issue attributes from dependent rules are accessible in templates.
+    """
+    rule1 = factory.new_rule(
+        prerequisites=[factory.new_jira_issue_prerequisite(DUMMY_ISSUE)],
+    )
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        """
+        summary: depends on {{ jira_issues.test_jira_template_1["key"] }}
+        description: |-
+            dependency is {{
+                "Completed" if jira_issues.test_jira_template_1.fields.resolution | default() else
+                "In Progress"
+            }}
+        """
+    )
+    rule2 = factory.new_rule(
+        prerequisites=[
+            PrerequisiteRule(rule=rule1.name),
+            jira_issue_prereq,
+        ],
+    )
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            rule1.name: {
+                "Jira('test_jira_template_1')": {
+                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
+                    "issue": "TEST-1",
+                    "state": "InProgress",
+                },
+                "state": "InProgress",
+            },
+            rule2.name: {
+                f"Rule({rule1.name!r})": {
+                    "state": "InProgress",
+                },
+                "Jira('test_jira_template_2')": {
+                    "create": '{"summary": "depends on TEST-1", "description": "dependency is In Progress", "labels": ["retasc-id-test_jira_template_2"]}',
+                    "issue": "TEST-2",
+                    "state": "InProgress",
+                },
+                "state": "InProgress",
+            },
+        }
+    }
+
+    # mock existing issues in Jira for the second run
+    def search_issues(jql, fields):
+        if "test_jira_template_1" in jql:
+            return [
+                {
+                    "key": "TEST-1",
+                    "fields": {
+                        "summary": "test",
+                        "labels": ["retasc-id-test_jira_template_1"],
+                        "resolution": "Done",
+                    },
+                }
+            ]
+        return [
+            {
+                "key": "TEST-2",
+                "fields": {
+                    "summary": "depends on TEST-1",
+                    "description": "dependency is In Progress",
+                    "labels": ["retasc-id-test_jira_template_2"],
+                    "resolution": None,
+                },
+            }
+        ]
+
+    mock_jira.search_issues.side_effect = search_issues
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            rule1.name: {
+                "Jira('test_jira_template_1')": {
+                    "issue": "TEST-1",
+                },
+                "state": "Completed",
+            },
+            rule2.name: {
+                f"Rule({rule1.name!r})": {},
+                "Jira('test_jira_template_2')": {
+                    "update": '{"description": "dependency is Completed"}',
+                    "issue": "TEST-2",
+                    "state": "InProgress",
+                },
+                "state": "InProgress",
+            },
+        }
+    }
