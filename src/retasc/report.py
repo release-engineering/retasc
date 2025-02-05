@@ -9,6 +9,7 @@ class Report:
     data: dict = field(default_factory=dict)
     current_sections: list = field(default_factory=list)
     current_data: dict = field(default_factory=dict)
+    jira_issues: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.current_data = self.data
