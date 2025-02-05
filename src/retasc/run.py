@@ -77,6 +77,8 @@ def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
     for input, rules in iterate_rules(context):
         for rule in rules:
             context.template.params = input.copy()
+            context.template.params["config"] = context.config
+            context.template.params["report"] = context.report.data
             context.template.params["jira_issues"] = context.report.jira_issues
             update_state(rule, context)
 
