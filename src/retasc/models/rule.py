@@ -60,6 +60,8 @@ class Rule(BaseModel):
             if rule_state == ReleaseRuleState.Pending:
                 break
 
+            context.template.params["state"] = rule_state
+
             with context.report.section(prereq.section_name(context)):
                 state = prereq.update_state(context)
                 if state != ReleaseRuleState.Completed:
