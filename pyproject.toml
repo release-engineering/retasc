@@ -9,22 +9,26 @@ license = "GPL-3.0-or-later"
 readme = "README.md"
 packages = [{include = "retasc", from = "src"}]
 requires-python = ">=3.12,<3.14"
-dependencies = [
-  "opentelemetry-sdk~=1.29.0",
-  "opentelemetry-instrumentation-flask~=0.47b0",
-  "opentelemetry-instrumentation-requests~=0.47b0",
-  "opentelemetry-exporter-otlp-proto-http~=1.29.0",
 
-  "requests~=2.32.0",
-  "urllib3~=2.3.0",
-  "pydantic~=2.10.5",
-  "atlassian-python-api~=3.41.16",
-  "Jinja2~=3.1.4",
-  "ruamel-yaml~=0.18.6",
-]
+# dependencies are still managed in tool.poetry.dependencies to support
+# Renovate: https://github.com/renovatebot/renovate/issues/33509
+dynamic = ["dependencies"]
 
 [project.urls]
 Repository = "https://github.com/release-engineering/retasc"
+
+[tool.poetry.dependencies]
+opentelemetry-sdk = "^1.30.0"
+opentelemetry-instrumentation-flask = "^0.51b0"
+opentelemetry-instrumentation-requests = "^0.51b0"
+opentelemetry-exporter-otlp-proto-http = "^1.30.0"
+
+requests = "^2.32.0"
+urllib3 = "^2.3.0"
+pydantic = "^2.10.5"
+atlassian-python-api = "^3.41.16"
+Jinja2 = "^3.1.4"
+ruamel-yaml = "^0.18.6"
 
 [tool.poetry.group.dev.dependencies]
 requests-mock = "^1.12.1"
