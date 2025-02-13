@@ -3,6 +3,8 @@ import json
 import logging
 from collections.abc import Iterator
 
+from opentelemetry import trace
+
 from retasc.jira_client import DryRunJiraClient, JiraClient
 from retasc.models.config import Config
 from retasc.models.inputs.base import InputBase
@@ -15,6 +17,7 @@ from retasc.runtime_context import RuntimeContext
 from retasc.templates.template_manager import TemplateManager
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def rules_by_input(context: RuntimeContext) -> list[tuple[InputBase, dict, list[Rule]]]:
@@ -51,14 +54,15 @@ def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
             yield values, rules
 
 
-def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
+def run_helper(
+    *, config: Config, jira_token: str, jira_cls: type[JiraClient | DryRunJiraClient]
+) -> Report:
     session = requests_session()
 
     # Retry also on 401 to workaround for a Jira bug
     # https://github.com/atlassian-api/atlassian-python-api/issues/257
     jira_session = requests_session(retry_on_statuses=(401,))
 
-    jira_cls = DryRunJiraClient if dry_run else JiraClient
     jira = jira_cls(api_url=config.jira_url, token=jira_token, session=jira_session)
     pp = ProductPagesApi(config.product_pages_url, session=session)
     rules = parse_rules(config.rules_path, config=config)
@@ -82,7 +86,16 @@ def run(*, config: Config, jira_token: str, dry_run: bool) -> Report:
             context.template.params["jira_issues"] = context.report.jira_issues
             update_state(rule, context)
 
-    if dry_run:
-        logger.warning("To apply changes, run without --dry-run flag")
+    return report
 
+
+@tracer.start_as_current_span("run")
+def run(*, config: Config, jira_token: str) -> Report:
+    return run_helper(config=config, jira_token=jira_token, jira_cls=JiraClient)
+
+
+@tracer.start_as_current_span("dry_run")
+def dry_run(*, config: Config, jira_token: str) -> Report:
+    report = run_helper(config=config, jira_token=jira_token, jira_cls=DryRunJiraClient)
+    logger.warning("To apply changes, run without --dry-run flag")
     return report
