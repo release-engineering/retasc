@@ -3,6 +3,10 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
 
 @dataclass
 class Report:
@@ -25,7 +29,8 @@ class Report:
         prev_data = self.current_data
         self.current_data = self.current_data.setdefault(state, {})
 
-        yield
+        with tracer.start_as_current_span(f"section:{state}"):
+            yield
 
         self.current_data = prev_data
         self.current_sections.pop()

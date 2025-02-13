@@ -11,7 +11,7 @@ from retasc.models.config import Config, parse_config
 from retasc.models.generate_schema import generate_schema
 from retasc.models.parse_rules import RuleParsingError, parse_rules
 from retasc.retasc_logging import init_logging
-from retasc.run import run
+from retasc.run import dry_run, run
 from retasc.tracing import init_tracing
 
 logger = logging.getLogger(__name__)
@@ -85,9 +85,13 @@ def main():
         print("Validation succeeded: The rule files are valid")
     elif args.command == "generate-schema":
         generate_schema(args.schema_file, output_json=args.json, config=args.config)
-    elif args.command in ("run", "dry-run"):
-        dry_run = args.command == "dry-run"
+    elif args.command == "run":
         jira_token = os.environ["RETASC_JIRA_TOKEN"]
         config = get_config()
-        run(config=config, jira_token=jira_token, dry_run=dry_run)
+        run(config=config, jira_token=jira_token)
+    elif args.command == "dry-run":
+        jira_token = os.environ["RETASC_JIRA_TOKEN"]
+        config = get_config()
+        dry_run(config=config, jira_token=jira_token)
+
     sys.exit(0)

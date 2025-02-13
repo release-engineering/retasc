@@ -28,7 +28,7 @@ INPUT = "ProductPagesRelease('rhel-10.0')"
 def call_run(*, additional_jira_fields: dict = {}):
     config = parse_config("examples/config.yaml")
     config.jira_fields.update(additional_jira_fields)
-    return run(config=config, jira_token="", dry_run=False)
+    return run(config=config, jira_token="")
 
 
 def issue_labels(issue_id: str) -> list[str]:
