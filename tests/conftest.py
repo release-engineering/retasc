@@ -60,7 +60,7 @@ def mock_jira_cls(cls: str, new_issue_key_prefix: str):
             nonlocal last_issue_id
             last_issue_id += 1
             key = f"{new_issue_key_prefix}-{last_issue_id}"
-            return {"key": key, "fields": {"resolution": None, **fields}}
+            return {"key": key}
 
         mock.create_issue.side_effect = mock_create_issue
         yield mock

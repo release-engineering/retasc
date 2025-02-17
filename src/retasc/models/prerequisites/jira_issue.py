@@ -155,6 +155,7 @@ def _update_issue(
         issue = _create_issue(
             fields, context, label=label, parent_issue_key=parent_issue_key
         )
+        issue["fields"] = {"resolution": None, **fields}
 
     _report_jira_issue(issue, jira_issue_id, context)
     return issue
