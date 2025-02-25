@@ -586,7 +586,7 @@ def test_run_rule_schedule_missing(mock_pp, factory):
 
 def test_run_rule_task_missing(mock_pp, factory):
     mock_pp.release_schedules.return_value = {
-         "MISMATCH-TASK": ProductPagesScheduleTask(
+        "MISMATCH-TASK": ProductPagesScheduleTask(
             start_date=date(1990, 1, 1),
             end_date=date(1990, 1, 3),
         ),
