@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from pydantic import Field
 
+from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.release_rule_state import ReleaseRuleState
 
 from .base import PrerequisiteBase
@@ -29,7 +30,12 @@ class PrerequisiteSchedule(PrerequisiteBase):
     def _params(self, schedule: dict, context) -> dict:
         local_params = {"schedule": schedule}
         schedule_task = context.template.render(self.schedule_task, **local_params)
-        task = schedule[schedule_task]
+        task = schedule.get(schedule_task)
+        if task is None:
+            raise PrerequisiteUpdateStateError(
+                f"Failed to find schedule task with name {schedule_task!r}"
+            )
+
         local_params.update(
             {
                 "schedule_task": schedule_task,

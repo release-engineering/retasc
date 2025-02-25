@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import jinja2.exceptions
 from pydantic import BaseModel, ConfigDict, Field
 
 from retasc.models.inputs import Input
 from retasc.models.inputs.product_pages_releases import ProductPagesReleases
 from retasc.models.prerequisites import Prerequisite
+from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.release_rule_state import ReleaseRuleState
 
 SCHEMA_VERSION = 1
@@ -63,7 +65,15 @@ class Rule(BaseModel):
             context.template.params["state"] = rule_state
 
             with context.report.section(prereq.section_name(context)):
-                state = prereq.update_state(context)
+                try:
+                    state = prereq.update_state(context)
+                except (
+                    PrerequisiteUpdateStateError,
+                    jinja2.exceptions.TemplateError,
+                ) as e:
+                    context.report.add_error(str(e))
+                    state = ReleaseRuleState.Pending
+
                 if state != ReleaseRuleState.Completed:
                     context.report.set("state", state.name)
                 rule_state = min(rule_state, state)

@@ -14,6 +14,7 @@ class Report:
     current_sections: list = field(default_factory=list)
     current_data: dict = field(default_factory=dict)
     jira_issues: dict = field(default_factory=dict)
+    errors: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         self.current_data = self.data
@@ -38,3 +39,9 @@ class Report:
     def set(self, key, value):
         self.print(f"{key}: {value}")
         self.current_data[key] = deepcopy(value)
+
+    def add_error(self, error: str):
+        self.set("error", f"❌ {error}")
+        label = "\n".join(f"{'  ' * i}{s}" for i, s in enumerate(self.current_sections))
+        indent = "   " * (len(self.current_sections) - 1)
+        self.errors.append(f"{label}\n{indent}{error}")

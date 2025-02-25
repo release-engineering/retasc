@@ -85,13 +85,13 @@ def main():
         print("Validation succeeded: The rule files are valid")
     elif args.command == "generate-schema":
         generate_schema(args.schema_file, output_json=args.json, config=args.config)
-    elif args.command == "run":
+    elif args.command in ("run", "dry-run"):
         jira_token = os.environ["RETASC_JIRA_TOKEN"]
         config = get_config()
-        run(config=config, jira_token=jira_token)
-    elif args.command == "dry-run":
-        jira_token = os.environ["RETASC_JIRA_TOKEN"]
-        config = get_config()
-        dry_run(config=config, jira_token=jira_token)
+        run_fn = run if args.command == "run" else dry_run
+        report = run_fn(config=config, jira_token=jira_token)
+        if report.errors:
+            errors = "\n".join(report.errors)
+            raise SystemExit(f"❌ Errors:\n{errors}")
 
     sys.exit(0)
