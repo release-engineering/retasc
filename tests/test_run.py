@@ -2,6 +2,7 @@
 import json
 import re
 from datetime import UTC, date, datetime
+from textwrap import dedent
 from unittest.mock import ANY, Mock, call, patch
 
 from pytest import fixture, mark, raises
@@ -547,6 +548,41 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
             }
         }
     }
+
+
+def test_run_rule_template_error(factory):
+    bad_condition = PrerequisiteCondition(condition="bad_template_variable")
+    good_condition = PrerequisiteCondition(condition="true")
+    rule1 = factory.new_rule(prerequisites=[bad_condition, good_condition])
+    rule2 = factory.new_rule(prerequisites=[good_condition])
+
+    report = call_run()
+    expected_error = "'bad_template_variable' is undefined"
+    assert report.data == {
+        INPUT: {
+            rule1.name: {
+                "Condition('bad_template_variable')": {
+                    "error": f"❌ {expected_error}",
+                    "state": "Pending",
+                },
+                "state": "Pending",
+            },
+            rule2.name: {
+                "Condition('true')": {
+                    "result": True,
+                },
+                "state": "Completed",
+            },
+        }
+    }
+    assert report.errors == [
+        dedent(f"""
+            {INPUT}
+              {rule1.name}
+                Condition('bad_template_variable')
+                  {expected_error}
+        """).strip()
+    ]
 
 
 @mark.parametrize(
