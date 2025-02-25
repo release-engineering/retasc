@@ -584,6 +584,25 @@ def test_run_rule_schedule_missing(mock_pp, factory):
     }
 
 
+def test_run_rule_task_missing(mock_pp, factory):
+    mock_pp.release_schedules.return_value = {
+         "MISMATCH-TASK": ProductPagesScheduleTask(
+            start_date=date(1990, 1, 1),
+            end_date=date(1990, 1, 3),
+        ),
+    }
+    rule = factory.new_rule(prerequisites=[PrerequisiteSchedule(schedule_task="TASK")])
+
+    report = call_run()
+    assert report.data[INPUT][rule.name] == {
+        "Schedule('TASK')": {
+            "state": "Skip",
+            "skip_reason": "No rule's task set in the schedule yet",
+        },
+        "state": "Skip",
+    }
+
+
 @mark.parametrize(
     ("condition_expr", "result"),
     (

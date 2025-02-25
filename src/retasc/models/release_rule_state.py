@@ -6,3 +6,4 @@ class ReleaseRuleState(IntEnum):
     Pending = 0
     InProgress = 1
     Completed = 2
+    Skip = 3

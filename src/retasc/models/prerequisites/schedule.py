@@ -29,6 +29,9 @@ class PrerequisiteSchedule(PrerequisiteBase):
     def _params(self, schedule: dict, context) -> dict:
         local_params = {"schedule": schedule}
         schedule_task = context.template.render(self.schedule_task, **local_params)
+        # Some old releases may not have newer milestone
+        if schedule_task not in schedule:
+            return {}
         task = schedule[schedule_task]
         local_params.update(
             {
@@ -54,6 +57,9 @@ class PrerequisiteSchedule(PrerequisiteBase):
             return ReleaseRuleState.Pending
 
         local_params = self._params(schedule, context)
+        if local_params == {}:
+            context.report.set("skip_reason", "No rule's task set in the schedule yet")
+            return ReleaseRuleState.Skip
         context.template.params.update(local_params)
         return ReleaseRuleState.Completed
 
