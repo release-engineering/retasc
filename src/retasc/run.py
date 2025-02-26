@@ -57,11 +57,17 @@ def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
 def run_helper(
     *, config: Config, jira_token: str, jira_cls: type[JiraClient | DryRunJiraClient]
 ) -> Report:
-    session = requests_session()
+    session = requests_session(
+        connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
+    )
 
     # Retry also on 401 to workaround for a Jira bug
     # https://github.com/atlassian-api/atlassian-python-api/issues/257
-    jira_session = requests_session(retry_on_statuses=(401,))
+    jira_session = requests_session(
+        connect_timeout=config.jira_connect_timeout,
+        read_timeout=config.jira_connect_timeout,
+        retry_on_statuses=(401,),
+    )
 
     jira = jira_cls(api_url=config.jira_url, token=jira_token, session=jira_session)
     pp = ProductPagesApi(config.product_pages_url, session=session)
