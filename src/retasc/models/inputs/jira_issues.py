@@ -19,8 +19,13 @@ class JiraIssues(InputBase):
     fields: list = Field(description="Jira issues fields to fetch")
 
     def values(self, context) -> Iterator[dict]:
-        issues = context.jira.search_issues(jql=self.jql, fields=self.fields)
+        jira_fields = [context.config.to_jira_field_name(f) for f in self.fields]
+        issues = context.jira.search_issues(jql=self.jql, fields=jira_fields)
         for issue in issues:
+            issue["fields"] = {
+                context.config.from_jira_field_name(f): v
+                for f, v in issue["fields"].items()
+            }
             yield {
                 "jira_issue": issue,
                 "jira_issues": issues,

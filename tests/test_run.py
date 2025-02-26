@@ -422,12 +422,14 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
             value: waiverdb
     """)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])
-    current_value = {"value": "gating", "child": {"id": "123", "value": "greenwave"}}
     mock_jira.search_issues.return_value = [
         {
             "key": "TEST-1",
             "fields": {
-                "customfield_123": current_value,
+                "customfield_123": {
+                    "value": "gating",
+                    "child": {"id": "123", "value": "greenwave"},
+                },
                 "labels": ["retasc-id-test_jira_template_1"],
                 "resolution": None,
             },
@@ -453,7 +455,19 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_fields)
 
-    current_value["child"]["value"] = "waiverdb"
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "customfield_123": {
+                    "value": "gating",
+                    "child": {"id": "123", "value": "waiverdb"},
+                },
+                "labels": ["retasc-id-test_jira_template_1"],
+                "resolution": None,
+            },
+        }
+    ]
     report = call_run(additional_jira_fields=additional_jira_fields)
     assert report.data == {
         INPUT: {
@@ -612,18 +626,6 @@ def test_run_rule_schedule_params(condition_expr, result, mock_pp, factory):
     assert report.data[INPUT][rule.name]["state"] == state
 
 
-def test_run_rule_jira_issue_unsupported_fields(factory):
-    jira_issue_prereq = factory.new_jira_issue_prerequisite("field_1: 1\nfield_2: 2\n")
-    factory.new_rule(prerequisites=[jira_issue_prereq])
-    expected_error = (
-        f"Jira template {jira_issue_prereq.template!r} contains"
-        " unsupported fields: 'field_1', 'field_2'"
-        "\nSupported fields: 'description', 'labels', 'project', 'summary'"
-    )
-    with raises(RuntimeError, match=expected_error):
-        call_run()
-
-
 def test_run_rule_jira_issue_reserved_labels(factory):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(
         "labels: [retasc-id-test1, retasc-id-test2]"
@@ -665,6 +667,37 @@ def test_run_rule_jira_issue_input(factory, mock_jira):
             }
         }
         for i, issue in enumerate(mock_jira.search_issues.return_value, start=1)
+    }
+
+
+def test_run_rule_jira_issue_input_field_names(factory, mock_jira):
+    """Use only nice Jira issue names from 'jira_fields' config mapping."""
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {"customfield_123": "test_value"},
+        },
+    ]
+    condition_prereq = PrerequisiteCondition(condition="jira_issue")
+    rule = factory.new_rule(
+        inputs=[JiraIssues(jql="labels=test-label", fields=[])],
+        prerequisites=[condition_prereq],
+    )
+    additional_jira_fields = {"human_readable_name": "customfield_123"}
+    report = call_run(additional_jira_fields=additional_jira_fields)
+    expected_issue = {
+        "key": "TEST-1",
+        "fields": {"human_readable_name": "test_value"},
+    }
+    assert report.data == {
+        "JiraIssues('TEST-1')": {
+            rule.name: {
+                "Condition('jira_issue')": {
+                    "result": expected_issue,
+                },
+                "state": "Completed",
+            }
+        }
     }
 
 
