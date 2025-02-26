@@ -84,18 +84,7 @@ def _create_issue(
 
 
 def _template_to_issue_data(template_data: dict, context, template: str) -> dict:
-    unsupported_fields = [
-        name for name in template_data if name not in context.config.jira_fields
-    ]
-    if unsupported_fields:
-        field_list = to_comma_separated(unsupported_fields)
-        supported_fields = to_comma_separated(context.config.jira_fields)
-        raise RuntimeError(
-            f"Jira template {template!r} contains unsupported fields: {field_list}"
-            f"\nSupported fields: {supported_fields}"
-        )
-
-    fields = {context.config.jira_fields[k]: v for k, v in template_data.items()}
+    fields = {context.config.to_jira_field_name(k): v for k, v in template_data.items()}
 
     reserved_labels = {
         label
@@ -157,6 +146,9 @@ def _update_issue(
         )
         issue["fields"] = {"resolution": None, **fields}
 
+    issue["fields"] = {
+        context.config.from_jira_field_name(f): v for f, v in issue["fields"].items()
+    }
     _report_jira_issue(issue, jira_issue_id, context)
     return issue
 
