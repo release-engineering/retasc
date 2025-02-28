@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from textwrap import dedent
+from typing import Any
 
 from retasc.models.prerequisites.jira_issue import (
     JiraIssueTemplate,
@@ -10,7 +11,7 @@ from retasc.models.rule import Rule
 
 class Factory:
     last_rule_id: int = 0
-    last_jira_template_id: int = 0
+    last_jira_issue_number: int = 0
 
     def __init__(self, tmpdir, rules_dict):
         self.tmpdir = tmpdir
@@ -30,26 +31,40 @@ class Factory:
         self.rules_dict[name] = rule
         return rule
 
-    def new_jira_template_file(self, template: str) -> tuple[str, str]:
-        self.last_jira_template_id += 1
-        jira_issue_id = f"test_jira_template_{self.last_jira_template_id}"
+    def new_jira_issue_id(self) -> str:
+        self.last_jira_issue_number += 1
+        return f"test_jira_template_{self.last_jira_issue_number}"
 
+    def new_jira_template_file(self, jira_issue_id: str, template: str) -> str:
         tmp = self.tmpdir / f"jira_template_{jira_issue_id}.yml"
         with open(tmp, "w") as f:
             f.write(dedent(template))
 
-        return jira_issue_id, str(tmp)
+        return str(tmp)
 
     def new_jira_subtask(self, template: str) -> JiraIssueTemplate:
-        jira_issue_id, file = self.new_jira_template_file(template)
+        jira_issue_id = self.new_jira_issue_id()
+        file = self.new_jira_template_file(jira_issue_id, template)
         return JiraIssueTemplate(id=jira_issue_id, template=file)
 
     def new_jira_issue_prerequisite(
-        self, template, *, jira_issue_id: str = "", subtasks=[]
+        self,
+        template: str | None = None,
+        *,
+        fields: dict[str, Any] | None = None,
+        jira_issue_id: str = "",
+        subtasks=[],
     ):
-        jira_issue_id_, file = self.new_jira_template_file(template)
+        jira_issue_id_ = jira_issue_id or self.new_jira_issue_id()
+
+        if template is None:
+            file = None
+        else:
+            file = self.new_jira_template_file(jira_issue_id_, template)
+
         return PrerequisiteJiraIssue(
-            jira_issue_id=jira_issue_id or jira_issue_id_,
+            jira_issue_id=jira_issue_id_,
             template=file,
+            fields=fields or {},
             subtasks=subtasks,
         )

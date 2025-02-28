@@ -14,9 +14,20 @@
         - id: add_beta_repos_{{ release }}
           template: "add_beta_repos.yaml.j2"
         - id: notify_team_{{ release }}
-          template: "notify_team.yaml.j2"
+          fields:
+            project:
+              key: "TEAM-{{ product | upper }}"
+            summary: Notify Team
+            labels: ["notify-{{ release }}"]
+            customfield_123: null
     - jira_issue_id: secondary_{{ release }}
       template: "secondary.yaml.j2"
+
+    - target_date: "end_date - 1|days"
+    - jira_issue_id: secondary_{{ release }}
+      fields:
+        labels:
+          - test
 
 - version: 1
   name: "Dependent Rule 1"
