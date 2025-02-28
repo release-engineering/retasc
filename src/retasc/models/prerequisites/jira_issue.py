@@ -2,11 +2,12 @@
 import json
 import os
 from collections.abc import Iterator
-from itertools import takewhile
 from textwrap import dedent
+from typing import Any
 
 from pydantic import BaseModel, Field
 
+from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.utils import to_comma_separated
 from retasc.yaml import yaml
@@ -25,6 +26,7 @@ TEMPLATE_PATH_DESCRIPTION = (
     "Path to the Jira issue template YAML file"
     ' relative to the "jira_template_path" configuration.'
 )
+FIELDS_DESCRIPTION = "Jira fields, override fields in the template"
 JIRA_REQUIRED_FIELDS = frozenset(["labels", "resolution"])
 
 
@@ -56,9 +58,10 @@ def _edit_issue(
         if k != "labels" and not _is_jira_field_up_to_date(issue["fields"][k], v)
     }
 
-    labels = {label, *fields.get("labels", [])}
+    # always keep the existing labels
     current_labels = set(issue["fields"]["labels"])
-    if labels != current_labels:
+    labels = {label, *fields.get("labels", []), *current_labels}
+    if not labels.issubset(current_labels):
         to_update["labels"] = sorted(labels)
 
     if not to_update:
@@ -83,35 +86,62 @@ def _create_issue(
     return context.jira.create_issue(fields)
 
 
-def _template_to_issue_data(template_data: dict, context, template: str) -> dict:
+def _template_to_issue_data(template_data: dict, context) -> dict:
     fields = {context.config.to_jira_field_name(k): v for k, v in template_data.items()}
 
+    labels = fields.get("labels", [])
+    if not isinstance(labels, list):
+        raise PrerequisiteUpdateStateError('Jira issue field "labels" must be a list')
+
     reserved_labels = {
-        label
-        for label in fields.get("labels", [])
-        if label.startswith(context.config.jira_label_prefix)
+        label for label in labels if label.startswith(context.config.jira_label_prefix)
     }
     if reserved_labels:
         label_list = to_comma_separated(reserved_labels)
-        raise RuntimeError(
-            f"Jira template {template!r} must not use labels prefixed with"
+        raise PrerequisiteUpdateStateError(
+            "Jira issue labels must not use reserved prefix"
             f" {context.config.jira_label_prefix!r}: {label_list}"
         )
 
     return fields
 
 
-def _render_issue_template(template: str, context) -> dict:
-    with open(context.config.jira_template_path / template) as f:
-        template_content = f.read()
+def render_fields(value: Any, context) -> Any:
+    """Render any strings nested in dicts and lists recursively as templates"""
+    if isinstance(value, str):
+        return context.template.render(value)
 
-    content = context.template.render(template_content)
-    template_data = yaml().load(content)
-    return _template_to_issue_data(template_data, context, template)
+    if isinstance(value, dict):
+        return {k: render_fields(v, context) for k, v in value.items()}
+
+    if isinstance(value, list):
+        return [render_fields(v, context) for v in value]
+
+    return value
+
+
+def _render_issue_template(
+    template: str | None, jira_fields: dict[str, Any], context
+) -> dict:
+    if template is None:
+        template_data = {}
+    else:
+        with open(context.config.jira_template_path / template) as f:
+            template_content = f.read()
+
+        content = context.template.render(template_content)
+        template_data = yaml().load(content)
+
+    template_data.update(render_fields(jira_fields, context))
+    return _template_to_issue_data(template_data, context)
 
 
 def _update_issue(
-    jira_issue_id: str, template: str, context, parent_issue_key: str | None = None
+    jira_issue_id: str,
+    template: str | None,
+    jira_fields: dict[str, Any],
+    context,
+    parent_issue_key: str | None = None,
 ) -> dict:
     """
     Create and update Jira issue if needed.
@@ -120,7 +150,7 @@ def _update_issue(
 
     Returns the managed Jira issue.
     """
-    fields = _render_issue_template(template, context)
+    fields = _render_issue_template(template, jira_fields, context)
 
     supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
     label = f"{context.config.jira_label_prefix}{jira_issue_id}"
@@ -130,7 +160,7 @@ def _update_issue(
     if issues:
         if len(issues) > 1:
             keys = to_comma_separated(issue["key"] for issue in issues)
-            raise RuntimeError(
+            raise PrerequisiteUpdateStateError(
                 f"Found multiple issues with the same ID label {label!r}: {keys}"
             )
 
@@ -155,7 +185,8 @@ def _update_issue(
 
 class JiraIssueTemplate(BaseModel):
     id: str = Field(description=ISSUE_ID_DESCRIPTION)
-    template: str = Field(description=TEMPLATE_PATH_DESCRIPTION)
+    template: str | None = Field(description=TEMPLATE_PATH_DESCRIPTION, default=None)
+    fields: dict[str, Any] = Field(description=FIELDS_DESCRIPTION, default_factory=dict)
 
 
 class PrerequisiteJiraIssue(PrerequisiteBase):
@@ -174,7 +205,8 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
     """
 
     jira_issue_id: str = Field(description=ISSUE_ID_DESCRIPTION)
-    template: str = Field(description=TEMPLATE_PATH_DESCRIPTION)
+    template: str | None = Field(description=TEMPLATE_PATH_DESCRIPTION, default=None)
+    fields: dict[str, Any] = Field(description=FIELDS_DESCRIPTION, default_factory=dict)
     subtasks: list[JiraIssueTemplate] = Field(default_factory=list)
 
     def validation_errors(self, rules, config) -> list[str]:
@@ -189,19 +221,6 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
             file_list = to_comma_separated(missing_files)
             errors.append(f"Jira issue template files not found: {file_list}")
 
-        own_issue_ids = set(jira_issue_ids(self))
-        preceding_issue_ids = {
-            issue_id
-            for prereq in takewhile(
-                lambda x: x is not self, jira_issue_prerequisites(rules)
-            )
-            for issue_id in jira_issue_ids(prereq)
-        }
-        duplicate_issue_ids = own_issue_ids.intersection(preceding_issue_ids)
-        if duplicate_issue_ids:
-            id_list = to_comma_separated(duplicate_issue_ids)
-            errors.append(f"Jira issue ID(s) already used elsewhere: {id_list}")
-
         return errors
 
     def update_state(self, context) -> ReleaseRuleState:
@@ -212,7 +231,7 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
         template parameter (dict key is jira_issue_id).
         """
         jira_issue_id = context.template.render(self.jira_issue_id)
-        issue = _update_issue(jira_issue_id, self.template, context)
+        issue = _update_issue(jira_issue_id, self.template, self.fields, context)
         if _is_resolved(issue):
             return ReleaseRuleState.Completed
 
@@ -220,7 +239,11 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
             subtask_id = context.template.render(subtask.id)
             with context.report.section(f"Subtask({subtask_id!r})"):
                 _update_issue(
-                    subtask_id, subtask.template, context, parent_issue_key=issue["key"]
+                    subtask_id,
+                    subtask.template,
+                    subtask.fields,
+                    context,
+                    parent_issue_key=issue["key"],
                 )
 
         return ReleaseRuleState.InProgress
@@ -235,28 +258,15 @@ def templates_root() -> str:
 
 
 def template_filenames(prereq: PrerequisiteJiraIssue) -> Iterator[str]:
-    yield prereq.template
+    if prereq.template is not None:
+        yield prereq.template
+
     for x in prereq.subtasks:
-        yield x.template
+        if x.template is not None:
+            yield x.template
 
 
 def template_paths(prereq: PrerequisiteJiraIssue) -> Iterator[str]:
     root = templates_root()
     for file in template_filenames(prereq):
         yield f"{root}/{file}"
-
-
-def jira_issue_ids(prereq: PrerequisiteJiraIssue) -> Iterator[str]:
-    yield prereq.jira_issue_id
-    for x in prereq.subtasks:
-        yield x.id
-
-
-def jira_issue_prerequisites(rules):
-    for rule in rules:
-        for prereq in rule.prerequisites:
-            if isinstance(prereq, PrerequisiteJiraIssue):
-                yield prereq
-    # Ignore this from coverage since rules is always non-empty and the
-    # iteration always stops at a specific prerequisite.
-    return  # pragma: no cover  # NOSONAR
