@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
-import re
 from datetime import UTC, date, datetime
 from textwrap import dedent
 from unittest.mock import ANY, Mock, call, patch
 
-from pytest import fixture, mark, raises
+from pytest import fixture, mark
 
 from retasc.models.config import parse_config
 from retasc.models.inputs.jira_issues import JiraIssues
@@ -23,6 +22,7 @@ from .factory import Factory
 DUMMY_ISSUE = """
 summary: test
 """
+DUMMY_ISSUE_FIELDS = {"summary": "test"}
 INPUT = "ProductPagesRelease('rhel-10.0')"
 
 
@@ -132,6 +132,33 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
     mock_jira.create_issue.assert_called_once_with(
         {
             "summary": "test",
+            "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+        }
+    )
+
+
+def test_run_rule_jira_issue_fields(factory, mock_jira):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(fields=DUMMY_ISSUE_FIELDS)
+    factory.new_rule(prerequisites=[jira_issue_prereq])
+    call_run()
+    mock_jira.create_issue.assert_called_once_with(
+        {
+            "summary": "test",
+            "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+        }
+    )
+
+
+def test_run_rule_jira_issue_fields_override_template(factory, mock_jira):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        "{summary: TEST, test: value}", fields=DUMMY_ISSUE_FIELDS
+    )
+    factory.new_rule(prerequisites=[jira_issue_prereq])
+    call_run()
+    mock_jira.create_issue.assert_called_once_with(
+        {
+            "summary": "test",
+            "test": "value",
             "labels": issue_labels(jira_issue_prereq.jira_issue_id),
         }
     )
@@ -277,7 +304,7 @@ def test_run_rule_jira_issue_in_progress(factory, mock_jira):
 
 def test_run_rule_jira_issue_not_unique(factory, mock_jira):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE)
-    factory.new_rule(prerequisites=[jira_issue_prereq])
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
     mock_jira.search_issues.return_value = [
         {
             "key": f"TEST-{i}",
@@ -290,11 +317,22 @@ def test_run_rule_jira_issue_not_unique(factory, mock_jira):
         for i in [1, 2]
     ]
 
-    expected_error = re.escape(
-        "Found multiple issues with the same ID label 'retasc-id-test_jira_template_1': 'TEST-1', 'TEST-2'"
+    expected_error = (
+        "❌ Found multiple issues with the same ID label 'retasc-id-test_jira_template_1':"
+        " 'TEST-1', 'TEST-2'"
     )
-    with raises(RuntimeError, match=expected_error):
-        call_run()
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Jira('test_jira_template_1')": {
+                    "error": expected_error,
+                    "state": "Pending",
+                },
+                "state": "Pending",
+            }
+        }
+    }
 
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_not_called()
@@ -331,12 +369,20 @@ def test_run_rule_jira_issue_in_progress_update(factory, mock_jira):
 
 
 def test_run_rule_jira_issue_update_labels(factory, mock_jira):
+    """
+    Make sure all requested labels are added to the existing Jira issue, but
+    avoid removing any additional labels.
+    """
     jira_issue_prereq = factory.new_jira_issue_prerequisite("""
         labels: [test1, test3]
     """)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])
     old_labels = issue_labels(jira_issue_prereq.jira_issue_id) + ["test1", "test2"]
-    expected_labels = issue_labels(jira_issue_prereq.jira_issue_id) + ["test1", "test3"]
+    expected_labels = issue_labels(jira_issue_prereq.jira_issue_id) + [
+        "test1",
+        "test2",
+        "test3",
+    ]
     mock_jira.search_issues.return_value = [
         {
             "key": "TEST-1",
@@ -666,13 +712,41 @@ def test_run_rule_jira_issue_reserved_labels(factory):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(
         "labels: [retasc-id-test1, retasc-id-test2]"
     )
-    factory.new_rule(prerequisites=[jira_issue_prereq])
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
     expected_error = (
-        f"Jira template {jira_issue_prereq.template!r} must not use labels"
-        " prefixed with 'retasc-id-': 'retasc-id-test1', 'retasc-id-test2'"
+        "❌ Jira issue labels must not use reserved prefix"
+        " 'retasc-id-': 'retasc-id-test1', 'retasc-id-test2'"
     )
-    with raises(RuntimeError, match=expected_error):
-        call_run()
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Jira('test_jira_template_1')": {
+                    "error": expected_error,
+                    "state": "Pending",
+                },
+                "state": "Pending",
+            }
+        }
+    }
+
+
+def test_run_rule_jira_issue_labels_must_be_list(factory):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("labels: test1")
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    expected_error = '❌ Jira issue field "labels" must be a list'
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Jira('test_jira_template_1')": {
+                    "error": expected_error,
+                    "state": "Pending",
+                },
+                "state": "Pending",
+            }
+        }
+    }
 
 
 def test_run_rule_jira_issue_input(factory, mock_jira):

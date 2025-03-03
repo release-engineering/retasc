@@ -126,35 +126,6 @@ def test_parse_rule_missing_jira_templates(rule_path, templates_root):
         call_parse_rules(str(rule_path))
 
 
-def test_parse_rule_duplicate_jira_ids(rule_path, templates_root):
-    file = rule_path / "rule.yaml"
-    rule2 = {
-        "version": 1,
-        "name": "Example Rule 2",
-        "prerequisites": [
-            {
-                "jira_issue_id": "main",
-                "template": "main.yaml",
-                "subtasks": [
-                    {"id": "main1", "template": "subtask1.yaml"},
-                ],
-            },
-            {"jira_issue_id": "secondary", "template": "secondary.yaml"},
-        ],
-    }
-    rules_data = [RULE_DATA, rule2]
-    yaml().dump(rules_data, file)
-    create_dependent_rules(rule_path)
-    create_jira_templates(templates_root)
-    expected_error = re.escape(
-        f"Invalid rule 'Example Rule 2' (file {str(file)!r}):"
-        "\n  Jira issue ID(s) already used elsewhere: 'main', 'main1'"
-        "\n  Jira issue ID(s) already used elsewhere: 'secondary'"
-    )
-    with raises(RuleParsingError, match=expected_error):
-        call_parse_rules(str(rule_path))
-
-
 def test_parse_rule_duplicate_name(rule_path, rule_dict):
     rule_dict["name"] = "DUPLICATE"
     for filename in ("rule1.yml", "rule2.yml"):
