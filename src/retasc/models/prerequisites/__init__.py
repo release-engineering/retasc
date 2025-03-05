@@ -4,6 +4,8 @@ from .jira_issue import PrerequisiteJiraIssue
 from .rule import PrerequisiteRule
 from .schedule import PrerequisiteSchedule
 from .target_date import PrerequisiteTargetDate
+from .variable import PrerequisiteVariable
+from .variable_string import PrerequisiteVariableString
 
 type Prerequisite = (
     PrerequisiteCondition
@@ -11,4 +13,6 @@ type Prerequisite = (
     | PrerequisiteRule
     | PrerequisiteSchedule
     | PrerequisiteTargetDate
+    | PrerequisiteVariable
+    | PrerequisiteVariableString
 )
