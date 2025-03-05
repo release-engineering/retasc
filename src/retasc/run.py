@@ -49,7 +49,7 @@ def update_state(rule: Rule, context: RuntimeContext):
 def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
     input_rules = rules_by_input(context)
     for input, values, rules in input_rules:
-        context.rules_states = {}
+        context.rule_template_params = {}
         with context.report.section(input.section_name(values)):
             yield values, rules
 

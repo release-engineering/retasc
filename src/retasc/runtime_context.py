@@ -5,7 +5,6 @@ from requests import Session
 
 from retasc.jira_client import JiraClient
 from retasc.models.config import Config
-from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.models.rule import Rule
 from retasc.product_pages_api import ProductPagesApi
 from retasc.report import Report
@@ -22,4 +21,4 @@ class RuntimeContext:
     report: Report
     config: Config
 
-    rules_states: dict[str, ReleaseRuleState] = field(default_factory=dict)
+    rule_template_params: dict[str, dict] = field(default_factory=dict)

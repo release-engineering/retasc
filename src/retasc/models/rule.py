@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from copy import deepcopy
+
 import jinja2.exceptions
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -50,20 +52,15 @@ class Rule(BaseModel):
         - In-progress, if some prerequisites are in In-progress but none are Pending
         - Completed, if all prerequisites are Completed
         """
-        state = context.rules_states.get(self.name)
-        if state is not None:
-            return state
-
-        context.rules_states[self.name] = ReleaseRuleState.Pending
+        params = context.rule_template_params.get(self.name)
+        if params is not None:
+            context.template.params.update(params)
+            return params["state"]
 
         rule_state = ReleaseRuleState.Completed
+        context.template.params["state"] = rule_state
 
         for prereq in self.prerequisites:
-            if rule_state == ReleaseRuleState.Pending:
-                break
-
-            context.template.params["state"] = rule_state
-
             with context.report.section(prereq.section_name(context)):
                 try:
                     state = prereq.update_state(context)
@@ -76,7 +73,13 @@ class Rule(BaseModel):
 
                 if state != ReleaseRuleState.Completed:
                     context.report.set("state", state.name)
-                rule_state = min(rule_state, state)
 
-        context.rules_states[self.name] = rule_state
+            rule_state = min(rule_state, state)
+            context.template.params["state"] = rule_state
+
+            if rule_state == ReleaseRuleState.Pending:
+                break
+
+        context.rule_template_params[self.name] = deepcopy(context.template.params)
+
         return rule_state
