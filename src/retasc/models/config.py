@@ -1,10 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from functools import cached_property
 from pathlib import Path
+from textwrap import dedent
 
 from pydantic import BaseModel, Field
 
 from retasc.yaml import yaml
+
+JIRA_ISSUES_QUERY_DEFAULT = "creator = currentUser()"
 
 
 class Config(BaseModel):
@@ -20,6 +23,24 @@ class Config(BaseModel):
     )
     jira_fields: dict[str, str] = Field(
         description="Mapping from a property in Jira issue template file to a Jira field name"
+    )
+    jira_issues_query: str = Field(
+        description=dedent(f"""
+            Jira JQL query for limiting search for issues in prerequisites.
+
+            This can ensure, for example, that only issues created by ReTaSC
+            are used in prerequisites, and nobody else is permitted to these
+            issues.
+
+            It must be possible to find the created and updated issues with
+            this query.
+
+            This affects only prerequisites, and not the JQL query in rules'
+            inputs.
+
+            The default is: {JIRA_ISSUES_QUERY_DEFAULT}
+        """).strip(),
+        default=JIRA_ISSUES_QUERY_DEFAULT,
     )
 
     connect_timeout: float = Field(

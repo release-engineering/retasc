@@ -125,6 +125,8 @@ def _update_issue(
     supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
     label = f"{context.config.jira_label_prefix}{jira_issue_id}"
     jql = f"labels={json.dumps(label)}"
+    if context.config.jira_issues_query:
+        jql = f"{jql} AND ({context.config.jira_issues_query})"
     issues = context.jira.search_issues(jql=jql, fields=sorted(supported_fields))
 
     if issues:
