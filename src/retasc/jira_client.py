@@ -23,38 +23,50 @@ class JiraClient:
 
     @tracer.start_as_current_span("JiraClient.edit_issue")
     def edit_issue(
-        self, issue_key: str, fields: dict, notify_users: bool = True
+        self, issue_key: str, *, fields: dict, update: dict, notify_users: bool = True
     ) -> None:
         """
         Updates a Jira issue with the provided fields.
 
         :param issue_key: The key of the Jira issue to update.
-        :param fields: A dictionary of fields to update in the issue.
-                    example:
-                        fields = {
-                            'project': {'key': 'RHELWF'},
-                            'summary': '[ReTaSC] Default summary',
-                            'description': 'Default description - please update this description.',
-                            'issuetype': {'name': 'Story'},
-                            'priority': {'name':'Normal'}
-                        }
+        :param fields: A dictionary of fields to override in the issue. Example:
+
+            {
+                "project": {"key": "RHELWF"},
+                "summary": "[ReTaSC] Default summary",
+                "priority": {"name":"Normal"}
+            }
+
+        :param fields: A dictionary of fields to update in the issue. Example:
+
+            {
+                "labels": [
+                    {"add": "retasc"},
+                    {"remove": "test"}
+                ]
+            }
+
         :return:
         :if not found: requests.exceptions.HTTPError: Issue Does Not Exist
         """
 
-        logger.info("Updating Jira issue %r with fields: %r", issue_key, fields)
+        logger.info(
+            "Updating Jira issue %r with: fields=%r, update=%r",
+            issue_key,
+            fields,
+            update,
+        )
         base_url = self.jira.resource_url("issue")
         url = f"{base_url}/{issue_key}"
-        self.jira.put(
-            url, data={"fields": fields}, params={"notifyUsers": notify_users}
-        )
+        data = {"fields": fields, "update": update}
+        self.jira.put(url, data=data, params={"notifyUsers": notify_users})
 
     @tracer.start_as_current_span("JiraClient.create_issue")
     def create_issue(self, fields: dict) -> dict:
         """
         Create a new Jira issue
         """
-        logger.info("Creating new Jira issue with fields: %r", fields)
+        logger.info("Creating new Jira issue with: fields=%r", fields)
 
         data = self.jira.create_issue(fields)
         if isinstance(data, dict):
@@ -89,7 +101,7 @@ class JiraClient:
 
 class DryRunJiraClient(JiraClient):
     def edit_issue(
-        self, issue_key: str, fields: dict, notify_users: bool = True
+        self, issue_key: str, *, fields: dict, update: dict, notify_users: bool = True
     ) -> None:
         # Skip modifying issues in dry-run mode.
         pass

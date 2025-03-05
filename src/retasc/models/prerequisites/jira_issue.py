@@ -50,9 +50,14 @@ def _is_jira_field_up_to_date(current_value, new_value):
 
 
 def _edit_issue(
-    issue, fields, context, label: str, parent_issue_key: str | None = None
+    issue,
+    fields: dict,
+    update: dict,
+    context,
+    label: str,
+    parent_issue_key: str | None = None,
 ):
-    to_update = {
+    to_edit = {
         k: v
         for k, v in fields.items()
         if k != "labels" and not _is_jira_field_up_to_date(issue["fields"][k], v)
@@ -62,14 +67,19 @@ def _edit_issue(
     current_labels = set(issue["fields"]["labels"])
     labels = {label, *fields.get("labels", []), *current_labels}
     if not labels.issubset(current_labels):
-        to_update["labels"] = sorted(labels)
+        to_edit["labels"] = sorted(labels)
 
-    if not to_update:
+    if not to_edit and not update:
         return
 
-    context.report.set("update", json.dumps(to_update))
-    _set_parent_issue(to_update, parent_issue_key)
-    context.jira.edit_issue(issue["key"], to_update)
+    if to_edit:
+        context.report.set("edit", json.dumps(to_edit))
+
+    if update:
+        context.report.set("update", json.dumps(update))
+
+    _set_parent_issue(to_edit, parent_issue_key)
+    context.jira.edit_issue(issue["key"], fields=to_edit, update=update)
 
 
 def _report_jira_issue(issue: dict, jira_issue_id: str, context):
@@ -78,16 +88,30 @@ def _report_jira_issue(issue: dict, jira_issue_id: str, context):
 
 
 def _create_issue(
-    fields, context, label: str, parent_issue_key: str | None = None
+    fields: dict, context, label: str, parent_issue_key: str | None = None
 ) -> dict:
     fields.setdefault("labels", []).append(label)
     context.report.set("create", json.dumps(fields))
     _set_parent_issue(fields, parent_issue_key)
-    return context.jira.create_issue(fields)
+    issue = context.jira.create_issue(fields)
+    issue["fields"] = {"resolution": None, **fields}
+    return issue
+
+
+def to_jira_field_names(data: dict, context) -> dict:
+    return {context.config.to_jira_field_name(k): v for k, v in data.items()}
+
+
+def from_jira_field_names(data: dict, context) -> dict:
+    return {context.config.from_jira_field_name(f): v for f, v in data.items()}
 
 
 def _template_to_issue_data(template_data: dict, context) -> dict:
-    fields = {context.config.to_jira_field_name(k): v for k, v in template_data.items()}
+    update = template_data.get("update", {})
+    if update:
+        fields = to_jira_field_names(update, context)
+
+    fields = to_jira_field_names(template_data, context)
 
     labels = fields.get("labels", [])
     if not isinstance(labels, list):
@@ -152,6 +176,7 @@ def _update_issue(
     """
     fields = _render_issue_template(template, jira_fields, context)
 
+    update = fields.pop("update", {})
     supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
     label = f"{context.config.jira_label_prefix}{jira_issue_id}"
     jql = f"labels={json.dumps(label)}"
@@ -168,17 +193,31 @@ def _update_issue(
 
         if not _is_resolved(issue):
             _edit_issue(
-                issue, fields, context, label=label, parent_issue_key=parent_issue_key
+                issue,
+                fields=fields,
+                update=update,
+                context=context,
+                label=label,
+                parent_issue_key=parent_issue_key,
             )
     else:
         issue = _create_issue(
-            fields, context, label=label, parent_issue_key=parent_issue_key
+            fields=fields,
+            context=context,
+            label=label,
+            parent_issue_key=parent_issue_key,
         )
-        issue["fields"] = {"resolution": None, **fields}
+        if update:
+            _edit_issue(
+                issue,
+                fields={},
+                update=update,
+                context=context,
+                label=label,
+                parent_issue_key=parent_issue_key,
+            )
 
-    issue["fields"] = {
-        context.config.from_jira_field_name(f): v for f, v in issue["fields"].items()
-    }
+    issue["fields"] = from_jira_field_names(issue["fields"], context)
     _report_jira_issue(issue, jira_issue_id, context)
     return issue
 
@@ -227,7 +266,7 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
         """
         Return Completed only if the issue was resolved.
 
-        If the issue exists or is created, it is added into "issues" dict
+        If the issue exists or is created, it is added into "jira_issues" dict
         template parameter (dict key is jira_issue_id).
         """
         jira_issue_id = context.template.render(self.jira_issue_id)
