@@ -952,3 +952,71 @@ def test_run_rule_prerequsite_variable_string(factory):
             }
         }
     }
+
+
+def test_run_rule_inherit_params(factory):
+    """Template parameters are inherited from dependent rules"""
+    rule_data_list = [
+        {
+            "version": 1,
+            "name": "rule-1",
+            "prerequisites": [
+                {"variable": "test_var", "string": "rule-1"},
+                {"condition": "test_var"},
+            ],
+        },
+        {
+            "version": 1,
+            "name": "rule-2",
+            "prerequisites": [
+                {"rule": "rule-1"},
+                {"condition": "test_var"},
+            ],
+        },
+        {
+            "version": 1,
+            "name": "rule-3",
+            "prerequisites": [
+                {"variable": "test_var", "string": "rule-2"},
+                {"rule": "rule-1"},
+                {"condition": "test_var"},
+            ],
+        },
+        {
+            "version": 1,
+            "name": "rule-4",
+            "prerequisites": [
+                {"condition": "test_var|default"},
+            ],
+        },
+    ]
+    for rule_data in rule_data_list:
+        factory.add_rule(Rule(**rule_data))
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            "rule-1": {
+                "VariableString('test_var')": {"value": "rule-1"},
+                "Condition('test_var')": {"result": "rule-1"},
+                "state": "Completed",
+            },
+            "rule-2": {
+                "Rule('rule-1')": {},
+                "Condition('test_var')": {"result": "rule-1"},
+                "state": "Completed",
+            },
+            "rule-3": {
+                "VariableString('test_var')": {"value": "rule-2"},
+                "Rule('rule-1')": {},
+                "Condition('test_var')": {"result": "rule-1"},
+                "state": "Completed",
+            },
+            "rule-4": {
+                "Condition('test_var|default')": {
+                    "result": "",
+                    "state": "Pending",
+                },
+                "state": "Pending",
+            },
+        }
+    }
