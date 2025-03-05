@@ -36,8 +36,75 @@ prerequisites:
 Task state can be one of:
 
 - Pending (if some prerequisites are in Pending)
-- In-progress (if some prerequisites are in In-progress but none are Pending)
+- InProgress (if some prerequisites are in InProgress but none are Pending)
 - Completed (if all prerequisites are Completed)
+
+## Rule Examples
+
+### Simple Rule for New Product Releases
+
+Here is an example of a single rule that would make sure that Jira issues
+exists for specific releases in Product Pages:
+
+```yaml
+name: New RHEL release
+
+# version of the rule schema
+version: 1
+
+# inputs for tasks created from this rule
+inputs:
+  # The input here is "rhel" product in Product Pages.
+  # One task will be created for each active release of the product.
+  - product: rhel
+
+# prerequisites are processed in the given order
+prerequisites:
+  # The following condition skips releases with version less than 10.1.
+  # For example, for rhel-9.2, the no other prerequisites would be processed,
+  # and the task would be marked as Pending.
+  - condition: "(10, 1) <= (major, minor)"
+
+  # Require schedule task with "GA" name to be defined (for all releases
+  # rhel-10.1 and up). This also sets a few variables for templating engine,
+  # mainly "start_date" and "end_date".
+  - schedule_task: "GA"
+
+  # Avoid processing further prerequisites if the target date is not reached,
+  # or the schedule task is marked as draft (this can be overridden with
+  # "ignore_drafts"). Processing would continue 8 weeks before the start date
+  # in "GA" schedule (and the schedule is not draft).
+  - target_date: "start_date - 8|weeks"
+
+  # This would create and manage Jira issues (main one and sub tasks) until
+  # the main issue one is resolved.
+  - jira_issue: rhel_config
+    # Jira issue fields are defined in Jinja2 template (the file path is
+    # relative to "jira_template_path" in configuration).
+    template: "rhel/rhel_config.yml.j2"
+    # The fields can be also defined or overridden here (both "template" and
+    # "fields" are optional).
+    fields:
+      labels:
+        - releng
+    subtasks:
+      - id: rhelwf-release-handoff-{{ release }}
+        template: "rhelwf/new-rhel-release/set-up-rhel-release-phase1-accept-handoff.yml.j2"
+        fields:
+          priority:
+            name: Normal
+
+  # After creating Jira issues, the task is marked as InProgress until the main Jira
+  # issue is resolved. After that, the task is marked as Completed.
+```
+
+Using the rule above, ReTaSC would create a Jira issue (and a subtask) after
+`target_date` and update it whenever some fields change in the template.
+
+ReTaSC sets a unique label for the Jira issues, to find it later without
+storing any extra information. The label is constructed using
+"jira_label_prefix" configuration, "jira_issue" from the prerequisite and
+"jira_label_suffix" template variable originating from the Product pages input.
 
 ## Environment Variables
 
