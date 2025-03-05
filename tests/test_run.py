@@ -14,6 +14,7 @@ from retasc.models.prerequisites.rule import PrerequisiteRule
 from retasc.models.prerequisites.schedule import PrerequisiteSchedule
 from retasc.models.prerequisites.target_date import PrerequisiteTargetDate
 from retasc.models.release_rule_state import ReleaseRuleState
+from retasc.models.rule import Rule
 from retasc.product_pages_api import ProductPagesScheduleTask
 from retasc.run import run
 
@@ -903,5 +904,51 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                 },
                 "state": "InProgress",
             },
+        }
+    }
+
+
+def test_run_rule_prerequsite_variable(factory):
+    rule_data = {
+        "version": 1,
+        "name": "test-rule",
+        "prerequisites": [
+            {"variable": "test_var", "value": "release"},
+            {"condition": "test_var"},
+        ],
+    }
+    rule = Rule(**rule_data)
+    factory.add_rule(rule)
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "Variable('test_var')": {"value": "rhel-10.0"},
+                "Condition('test_var')": {"result": "rhel-10.0"},
+                "state": "Completed",
+            }
+        }
+    }
+
+
+def test_run_rule_prerequsite_variable_string(factory):
+    rule_data = {
+        "version": 1,
+        "name": "test-rule",
+        "prerequisites": [
+            {"variable": "test_var", "string": "{{ release }}"},
+            {"condition": "test_var"},
+        ],
+    }
+    rule = Rule(**rule_data)
+    factory.add_rule(rule)
+    report = call_run()
+    assert report.data == {
+        INPUT: {
+            rule.name: {
+                "VariableString('test_var')": {"value": "rhel-10.0"},
+                "Condition('test_var')": {"result": "rhel-10.0"},
+                "state": "Completed",
+            }
         }
     }

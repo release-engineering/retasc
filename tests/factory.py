@@ -31,6 +31,9 @@ class Factory:
         self.rules_dict[name] = rule
         return rule
 
+    def add_rule(self, rule: Rule):
+        self.rules_dict[rule.name] = rule
+
     def new_jira_issue_id(self) -> str:
         self.last_jira_issue_number += 1
         return f"test_jira_template_{self.last_jira_issue_number}"
