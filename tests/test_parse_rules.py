@@ -22,14 +22,14 @@ RULE_DATA = {
         {"rule": "Dependent Rule 1"},
         {"rule": "Dependent Rule 2"},
         {
-            "jira_issue_id": "main",
+            "jira_issue": "main",
             "template": "main.yaml",
             "subtasks": [
-                {"id": "main1", "template": "subtask1.yaml"},
-                {"id": "main2", "template": "subtask2.yaml"},
+                {"jira_issue": "main1", "template": "subtask1.yaml"},
+                {"jira_issue": "main2", "template": "subtask2.yaml"},
             ],
         },
-        {"jira_issue_id": "secondary", "template": "secondary.yaml"},
+        {"jira_issue": "secondary", "template": "secondary.yaml"},
     ],
 }
 DEPENDENT_RULES_DATA = [

@@ -29,6 +29,7 @@ class JiraIssues(InputBase):
             yield {
                 "jira_issue": issue,
                 "jira_issues": issues,
+                "jira_label_suffix": f"--jira-{issue['key']}",
             }
 
     def section_name(self, values: dict) -> str:

@@ -8,23 +8,23 @@
     - target_date: "start_date - 7|days"
     - rule: "Dependent Rule 1"
     - rule: "Dependent Rule 2"
-    - jira_issue_id: main_{{ release }}
+    - jira_issue: main
       template: "main.yaml.j2"
       subtasks:
-        - id: add_beta_repos_{{ release }}
+        - jira_issue: add_beta_repos
           template: "add_beta_repos.yaml.j2"
-        - id: notify_team_{{ release }}
+        - jira_issue: notify_team
           fields:
             project:
               key: "TEAM-{{ product | upper }}"
             summary: Notify Team
             labels: ["notify-{{ release }}"]
             customfield_123: null
-    - jira_issue_id: secondary_{{ release }}
+    - jira_issue: secondary
       template: "secondary.yaml.j2"
 
     - target_date: "end_date - 1|days"
-    - jira_issue_id: secondary_{{ release }}
+    - jira_issue: secondary
       fields:
         labels:
           - test

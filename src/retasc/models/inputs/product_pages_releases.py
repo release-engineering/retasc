@@ -43,6 +43,7 @@ class ProductPagesReleases(InputBase):
                 "release": release,
                 "major": major,
                 "minor": minor,
+                "jira_label_suffix": f"-{release}",
             }
             yield data
 

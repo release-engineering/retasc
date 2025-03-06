@@ -34,7 +34,7 @@ def call_run(*, additional_jira_fields: dict = {}):
 
 
 def issue_labels(issue_id: str) -> list[str]:
-    return [f"retasc-id-{issue_id}"]
+    return [f"retasc-id-{issue_id}-rhel-10.0"]
 
 
 @fixture
@@ -122,7 +122,7 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
         INPUT: {
             rule.name: {
                 "Jira('test_jira_template_1')": {
-                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
+                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
                     "issue": "TEST-1",
                     "state": "InProgress",
                 },
@@ -133,7 +133,7 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
     mock_jira.create_issue.assert_called_once_with(
         {
             "summary": "test",
-            "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+            "labels": issue_labels(jira_issue_prereq.jira_issue),
         }
     )
 
@@ -145,7 +145,7 @@ def test_run_rule_jira_issue_fields(factory, mock_jira):
     mock_jira.create_issue.assert_called_once_with(
         {
             "summary": "test",
-            "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+            "labels": issue_labels(jira_issue_prereq.jira_issue),
         }
     )
 
@@ -160,7 +160,7 @@ def test_run_rule_jira_issue_fields_override_template(factory, mock_jira):
         {
             "summary": "test",
             "test": "value",
-            "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+            "labels": issue_labels(jira_issue_prereq.jira_issue),
         }
     )
 
@@ -169,14 +169,14 @@ def test_run_rule_jira_search_once_per_prerequisite(factory, mock_jira, mock_pp)
     releases = ["rhel-10.0", "rhel-9.9"]
     mock_pp.active_releases.return_value = releases
     jira_issue_prereq = factory.new_jira_issue_prerequisite(
-        DUMMY_ISSUE, jira_issue_id="test-{{ release }}"
+        DUMMY_ISSUE, jira_issue="test"
     )
     rules = [factory.new_rule(prerequisites=[jira_issue_prereq]) for _ in range(2)]
     report = call_run()
     assert report.data == {
         f"ProductPagesRelease('{release}')": {
             rule.name: {
-                f"Jira('test-{release}')": {
+                "Jira('test')": {
                     "create": f'{{"summary": "test", "labels": ["retasc-id-test-{release}"]}}',
                     "issue": ANY,
                     "state": "InProgress",
@@ -249,15 +249,15 @@ def test_run_rule_jira_issue_create_subtasks(factory):
         INPUT: {
             rule.name: {
                 "Jira('test_jira_template_3')": {
-                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_3"]}',
+                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_3-rhel-10.0"]}',
                     "issue": "TEST-1",
                     "state": "InProgress",
                     "Subtask('test_jira_template_1')": {
-                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
+                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
                         "issue": "TEST-2",
                     },
                     "Subtask('test_jira_template_2')": {
-                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_2"]}',
+                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
                         "issue": "TEST-3",
                     },
                 },
@@ -281,7 +281,7 @@ def test_run_rule_jira_issue_in_progress(factory, mock_jira):
         {
             "key": "TEST-1",
             "fields": {
-                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+                "labels": issue_labels(jira_issue_prereq.jira_issue),
                 "resolution": None,
                 "summary": "test",
             },
@@ -310,7 +310,7 @@ def test_run_rule_jira_issue_not_unique(factory, mock_jira):
         {
             "key": f"TEST-{i}",
             "fields": {
-                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+                "labels": issue_labels(jira_issue_prereq.jira_issue),
                 "resolution": None,
                 "summary": "test",
             },
@@ -319,8 +319,8 @@ def test_run_rule_jira_issue_not_unique(factory, mock_jira):
     ]
 
     expected_error = (
-        "❌ Found multiple issues with the same ID label 'retasc-id-test_jira_template_1':"
-        " 'TEST-1', 'TEST-2'"
+        "❌ Found multiple issues with the same ID label"
+        " 'retasc-id-test_jira_template_1-rhel-10.0': 'TEST-1', 'TEST-2'"
     )
     report = call_run()
     assert report.data == {
@@ -346,7 +346,7 @@ def test_run_rule_jira_issue_in_progress_update(factory, mock_jira):
         {
             "key": "TEST-1",
             "fields": {
-                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+                "labels": issue_labels(jira_issue_prereq.jira_issue),
                 "resolution": None,
                 "summary": "test old",
             },
@@ -378,8 +378,8 @@ def test_run_rule_jira_issue_update_labels(factory, mock_jira):
         labels: [test1, test3]
     """)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])
-    old_labels = issue_labels(jira_issue_prereq.jira_issue_id) + ["test1", "test2"]
-    expected_labels = issue_labels(jira_issue_prereq.jira_issue_id) + [
+    old_labels = issue_labels(jira_issue_prereq.jira_issue) + ["test1", "test2"]
+    expected_labels = issue_labels(jira_issue_prereq.jira_issue) + [
         "test1",
         "test2",
         "test3",
@@ -422,7 +422,7 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
             "key": "TEST-1",
             "fields": {
                 "assignee": current_value,
-                "labels": ["retasc-id-test_jira_template_1"],
+                "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
                 "resolution": None,
             },
         }
@@ -478,7 +478,7 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
                     "value": "gating",
                     "child": {"id": "123", "value": "greenwave"},
                 },
-                "labels": ["retasc-id-test_jira_template_1"],
+                "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
                 "resolution": None,
             },
         }
@@ -511,7 +511,7 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
                     "value": "gating",
                     "child": {"id": "123", "value": "waiverdb"},
                 },
-                "labels": ["retasc-id-test_jira_template_1"],
+                "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
                 "resolution": None,
             },
         }
@@ -539,7 +539,7 @@ def test_run_rule_jira_issue_completed(factory, mock_jira):
         {
             "key": "TEST-1",
             "fields": {
-                "labels": issue_labels(jira_issue_prereq.jira_issue_id),
+                "labels": issue_labels(jira_issue_prereq.jira_issue),
                 "resolution": "Closed",
             },
         }
@@ -574,7 +574,7 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
     if result:
         issue_prereq = {
             "Jira('test_jira_template_1')": {
-                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
+                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
                 "issue": "TEST-1",
                 "state": "InProgress",
             }
@@ -840,7 +840,7 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
         INPUT: {
             rule1.name: {
                 "Jira('test_jira_template_1')": {
-                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1"]}',
+                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
                     "issue": "TEST-1",
                     "state": "InProgress",
                 },
@@ -851,7 +851,7 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                     "state": "InProgress",
                 },
                 "Jira('test_jira_template_2')": {
-                    "create": '{"summary": "depends on TEST-1", "description": "dependency is In Progress", "labels": ["retasc-id-test_jira_template_2"]}',
+                    "create": '{"summary": "depends on TEST-1", "description": "dependency is In Progress", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
                     "issue": "TEST-2",
                     "state": "InProgress",
                 },
@@ -868,7 +868,7 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                     "key": "TEST-1",
                     "fields": {
                         "summary": "test",
-                        "labels": ["retasc-id-test_jira_template_1"],
+                        "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
                         "resolution": "Done",
                     },
                 }
@@ -879,7 +879,7 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                 "fields": {
                     "summary": "depends on TEST-1",
                     "description": "dependency is In Progress",
-                    "labels": ["retasc-id-test_jira_template_2"],
+                    "labels": ["retasc-id-test_jira_template_2-rhel-10.0"],
                     "resolution": None,
                 },
             }
