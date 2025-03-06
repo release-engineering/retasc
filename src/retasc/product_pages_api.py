@@ -7,7 +7,10 @@ from dataclasses import dataclass
 from datetime import date
 from functools import cache
 
+from opentelemetry import trace
 from requests import Session
+
+tracer = trace.get_tracer(__name__)
 
 
 @dataclass
@@ -27,6 +30,7 @@ class ProductPagesApi:
         self.session = session
 
     @cache
+    @tracer.start_as_current_span("ProductPagesApi.active_releases")
     def active_releases(self, product_shortname: str) -> list[str]:
         """Gets list of active release names."""
         opt = {
@@ -41,6 +45,7 @@ class ProductPagesApi:
         return [item["shortname"] for item in data]
 
     @cache
+    @tracer.start_as_current_span("ProductPagesApi.release_schedules")
     def release_schedules(
         self, release_short_name: str
     ) -> dict[str, ProductPagesScheduleTask]:
