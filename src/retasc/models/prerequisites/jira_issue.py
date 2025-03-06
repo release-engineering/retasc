@@ -5,7 +5,7 @@ from collections.abc import Iterator
 from textwrap import dedent
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.release_rule_state import ReleaseRuleState
@@ -18,7 +18,8 @@ ISSUE_ID_DESCRIPTION = dedent("""
     Template for unique label name to identify the issue.
 
     Note: The label in Jira will be prefixed with "jira_label_prefix"
-    configuration.
+    configuration and suffixed with "jira_label_suffix" template variable
+    (originates from rule inputs).
 
     Example: "add_beta_repos_for_{{ release }}"
 """).strip()
@@ -153,7 +154,7 @@ def _update_issue(
     fields = _render_issue_template(template, jira_fields, context)
 
     supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
-    label = f"{context.config.jira_label_prefix}{jira_issue_id}"
+    label = f"{context.config.jira_label_prefix}{jira_issue_id}{context.template.params['jira_label_suffix']}"
     jql = f"labels={json.dumps(label)}"
     issues = context.jira.search_issues(jql=jql, fields=sorted(supported_fields))
 
@@ -183,13 +184,13 @@ def _update_issue(
     return issue
 
 
-class JiraIssueTemplate(BaseModel):
-    id: str = Field(description=ISSUE_ID_DESCRIPTION)
+class JiraIssueTemplate(PrerequisiteBase):
+    jira_issue: str = Field(description=ISSUE_ID_DESCRIPTION)
     template: str | None = Field(description=TEMPLATE_PATH_DESCRIPTION, default=None)
     fields: dict[str, Any] = Field(description=FIELDS_DESCRIPTION, default_factory=dict)
 
 
-class PrerequisiteJiraIssue(PrerequisiteBase):
+class PrerequisiteJiraIssue(JiraIssueTemplate):
     """
     Prerequisite Jira issue.
 
@@ -204,9 +205,6 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
     Jira issue attributes allowed in the templates.
     """
 
-    jira_issue_id: str = Field(description=ISSUE_ID_DESCRIPTION)
-    template: str | None = Field(description=TEMPLATE_PATH_DESCRIPTION, default=None)
-    fields: dict[str, Any] = Field(description=FIELDS_DESCRIPTION, default_factory=dict)
     subtasks: list[JiraIssueTemplate] = Field(default_factory=list)
 
     def validation_errors(self, rules, config) -> list[str]:
@@ -227,16 +225,18 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
         """
         Return Completed only if the issue was resolved.
 
-        If the issue exists or is created, it is added into "issues" dict
-        template parameter (dict key is jira_issue_id).
+        If the issue exists or is created, it is stored as "jira_issue"
+        template variable and added into "jira_issues" template dict with key
+        matching the jira_issue.
         """
-        jira_issue_id = context.template.render(self.jira_issue_id)
+        jira_issue_id = context.template.render(self.jira_issue)
         issue = _update_issue(jira_issue_id, self.template, self.fields, context)
+        context.template.params["jira_issue"] = issue
         if _is_resolved(issue):
             return ReleaseRuleState.Completed
 
         for subtask in self.subtasks:
-            subtask_id = context.template.render(subtask.id)
+            subtask_id = context.template.render(subtask.jira_issue)
             with context.report.section(f"Subtask({subtask_id!r})"):
                 _update_issue(
                     subtask_id,
@@ -249,7 +249,7 @@ class PrerequisiteJiraIssue(PrerequisiteBase):
         return ReleaseRuleState.InProgress
 
     def section_name(self, context) -> str:
-        jira_issue_id = context.template.render(self.jira_issue_id)
+        jira_issue_id = context.template.render(self.jira_issue)
         return f"Jira({jira_issue_id!r})"
 
 
