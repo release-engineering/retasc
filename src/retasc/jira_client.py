@@ -13,13 +13,23 @@ class JiraClient:
     Jira Client Wrapper
     """
 
-    def __init__(self, api_url: str, *, token: str, session: Session):
+    def __init__(
+        self,
+        api_url: str,
+        *,
+        token: str,
+        session: Session,
+        timeout: int | tuple[int, int] | None = None,
+    ):
         self.api_url = api_url
         self.jira = Jira(
             url=api_url,
             token=token,
             session=session,
         )
+        # Override timeout separately, because Jira constructor forces the
+        # value to be an int.
+        self.jira.timeout = timeout
 
     @tracer.start_as_current_span("JiraClient.edit_issue")
     def edit_issue(

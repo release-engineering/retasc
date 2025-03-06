@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+from unittest.mock import patch
+
 from pytest import fixture, raises
-from requests import Session
+from requests import Response, Session
 
 from retasc.jira_client import DryRunJiraClient, JiraClient
 
@@ -88,3 +90,23 @@ def test_unexpected_response_get_issue(jira_api, requests_mock):
     requests_mock.get(f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}", json=[])
     with raises(RuntimeError, match=r"Unexpected response: \[\]"):
         jira_api.get_issue(ISSUE_KEY)
+
+
+def test_timeout(requests_mock):
+    """
+    The default timeout in atlassian.Jira API is 75 seconds for both the
+    connection and the request. This should be overridden in JiraClient so it
+    is possible to set different timeouts for connection and request or use
+    None.
+    """
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/search", json=SEARCH_LIST)
+    session = Session()
+    jira_api = JiraClient(JIRA_URL, token="DUMMY-TOKEN", session=session)
+    with patch.object(session, "request") as mock_request:
+        response = Response()
+        response.status_code = 200
+        mock_request.return_value = response
+        jira_api.search_issues(JQL)
+        assert len(mock_request.mock_calls) == 1
+        _name, _args, kwargs = mock_request.mock_calls[0]
+        assert kwargs.get("timeout") is None, kwargs
