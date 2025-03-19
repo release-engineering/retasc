@@ -10,8 +10,7 @@ variables:
   JUNIT_XML: report.xml
 
 default:
-  tags:
-    - docker
+  tags: [shared-podman]
 
 workflow:
   rules:
