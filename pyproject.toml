@@ -41,3 +41,16 @@ retasc = "retasc.__main__:main"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff.lint]
+extend-select = [
+  "C",  # mccabe/complexity
+  "I",  # isort
+  "N",  # pep8-naming
+  "UP",  # pyupgrade
+  "FURB",  # refurb
+  "PERF",  # Perflint
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 6
