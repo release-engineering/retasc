@@ -3,6 +3,7 @@ from textwrap import dedent
 
 from pydantic import Field
 
+from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.release_rule_state import ReleaseRuleState
 
 from .base import PrerequisiteBase
@@ -17,7 +18,8 @@ class PrerequisiteTargetDate(PrerequisiteBase):
 
     Additionally, if ignore_drafts is true (the default value), the
     prerequisite state is always Pending if the scheduled item is draft (i.e.
-    schedule_task_is_draft template parameter is true).
+    schedule_task_is_draft template parameter is true), and an exception would
+    be thrown if the draft schedule is reached.
 
     Adds the following template parameters:
     - target_date - the evaluated target date
@@ -33,7 +35,7 @@ class PrerequisiteTargetDate(PrerequisiteBase):
         """).strip(),
     )
     ignore_drafts: bool = Field(
-        description="Ignore draft scheduled items if true (the default).", default=True
+        description="If true (the default), Ignore draft scheduled items.", default=True
     )
 
     def update_state(self, context) -> ReleaseRuleState:
@@ -41,10 +43,6 @@ class PrerequisiteTargetDate(PrerequisiteBase):
         Return Completed if target date is earlier than today,
         otherwise return Pending.
         """
-        if self.ignore_drafts and context.template.params["schedule_task_is_draft"]:
-            context.report.set("schedule_task_is_draft", True)
-            return ReleaseRuleState.Pending
-
         target_date = context.template.evaluate(self.target_date)
         context.template.params["target_date"] = target_date
         today = context.template.env.globals["today"]
@@ -52,8 +50,20 @@ class PrerequisiteTargetDate(PrerequisiteBase):
         context.report.set("target_date", target_date)
         if days_remaining > 0:
             context.report.set("days_remaining", days_remaining)
+
+        if self.ignore_drafts and context.template.params["schedule_task_is_draft"]:
+            context.report.set("schedule_task_is_draft", True)
+            if days_remaining <= 0:
+                raise PrerequisiteUpdateStateError(
+                    "Target date was reached, but schedule is marked as draft"
+                )
             return ReleaseRuleState.Pending
-        return ReleaseRuleState.Completed
+
+        return (
+            ReleaseRuleState.Completed
+            if days_remaining <= 0
+            else ReleaseRuleState.Pending
+        )
 
     def section_name(self, context) -> str:
         return f"TargetDate({self.target_date!r})"
