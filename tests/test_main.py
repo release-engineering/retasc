@@ -103,7 +103,11 @@ def test_run(arg, issue_key, capsys):
 
 @mark.parametrize("arg", ("run", "dry-run"))
 def test_run_missing_schedule(arg, capsys, mock_pp):
-    del mock_pp.release_schedules.return_value["GA for rhel 10.0"]
+    mock_pp.release_schedules.return_value = [
+        task
+        for task in mock_pp.release_schedules.return_value
+        if task.name != "GA for rhel 10.0"
+    ]
     expected_error = dedent("""
         ❌ Errors:
         ProductPagesRelease('rhel-10.0')

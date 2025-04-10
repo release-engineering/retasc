@@ -50,18 +50,21 @@ def test_release_schedules(pp_api, requests_mock):
         json=schedules,
     )
     resp = pp_api.release_schedules("example_product")
-    assert resp == {
-        "task1": ProductPagesScheduleTask(
+    assert resp == [
+        ProductPagesScheduleTask(
+            name="task1",
             start_date=date(2024, 10, 1),
             end_date=date(2024, 10, 2),
         ),
-        "task2": ProductPagesScheduleTask(
+        ProductPagesScheduleTask(
+            name="task2",
             start_date=date(2024, 11, 20),
             end_date=date(2024, 11, 21),
         ),
-        "task3": ProductPagesScheduleTask(
+        ProductPagesScheduleTask(
+            name="task3",
             start_date=date(2024, 11, 21),
             end_date=date(2024, 11, 22),
             is_draft=True,
         ),
-    }
+    ]
