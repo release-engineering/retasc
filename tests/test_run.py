@@ -648,13 +648,14 @@ def test_run_rule_template_error(factory):
     ),
 )
 def test_run_rule_schedule_target_date(target_date, is_draft, result, mock_pp, factory):
-    mock_pp.release_schedules.return_value = {
-        "TASK": ProductPagesScheduleTask(
+    mock_pp.release_schedules.return_value = [
+        ProductPagesScheduleTask(
+            name="TASK",
             start_date=date(1990, 1, 1),
             end_date=datetime.now(UTC).date(),
             is_draft=is_draft,
         ),
-    }
+    ]
     rule = factory.new_rule(
         prerequisites=[
             PrerequisiteSchedule(schedule_task="TASK"),
@@ -668,7 +669,7 @@ def test_run_rule_schedule_target_date(target_date, is_draft, result, mock_pp, f
 
 
 def test_run_rule_schedule_missing(mock_pp, factory):
-    mock_pp.release_schedules.return_value = {}
+    mock_pp.release_schedules.return_value = []
     rule = factory.new_rule(prerequisites=[PrerequisiteSchedule(schedule_task="TASK")])
 
     report = call_run()
@@ -694,12 +695,13 @@ def test_run_rule_schedule_missing(mock_pp, factory):
     ),
 )
 def test_run_rule_schedule_params(condition_expr, result, mock_pp, factory):
-    mock_pp.release_schedules.return_value = {
-        "TASK": ProductPagesScheduleTask(
+    mock_pp.release_schedules.return_value = [
+        ProductPagesScheduleTask(
+            name="TASK",
             start_date=date(1990, 1, 1),
             end_date=date(1990, 1, 3),
         ),
-    }
+    ]
     schedule = PrerequisiteSchedule(schedule_task="TASK")
     condition = PrerequisiteCondition(condition=condition_expr)
     rule = factory.new_rule(prerequisites=[schedule, condition])

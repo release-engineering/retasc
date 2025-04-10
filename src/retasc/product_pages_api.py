@@ -15,6 +15,7 @@ tracer = trace.get_tracer(__name__)
 
 @dataclass
 class ProductPagesScheduleTask:
+    name: str
     start_date: date
     end_date: date
     is_draft: bool = False
@@ -48,7 +49,7 @@ class ProductPagesApi:
     @tracer.start_as_current_span("ProductPagesApi.release_schedules")
     def release_schedules(
         self, release_short_name: str
-    ) -> dict[str, ProductPagesScheduleTask]:
+    ) -> list[ProductPagesScheduleTask]:
         """
         Gets schedules for given release.
 
@@ -60,11 +61,12 @@ class ProductPagesApi:
         )
         res.raise_for_status()
         data = res.json()
-        return {
-            item["name"]: ProductPagesScheduleTask(
+        return [
+            ProductPagesScheduleTask(
+                name=item["name"],
                 start_date=date.fromisoformat(item["date_start"]),
                 end_date=date.fromisoformat(item["date_finish"]),
                 is_draft=item["draft"],
             )
             for item in data
-        }
+        ]

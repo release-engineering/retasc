@@ -81,14 +81,16 @@ def mock_pp():
     with patch("retasc.run.ProductPagesApi", autospec=True) as mock_cls:
         mock = mock_cls(ANY, session=ANY)
         mock.active_releases.return_value = ["rhel-10.0"]
-        mock.release_schedules.return_value = {
-            "GA for rhel 10.0": ProductPagesScheduleTask(
+        mock.release_schedules.return_value = [
+            ProductPagesScheduleTask(
+                name="GA for rhel 10.0",
                 start_date=date(1990, 1, 1),
                 end_date=date(1990, 1, 2),
             ),
-            "TASK": ProductPagesScheduleTask(
+            ProductPagesScheduleTask(
+                name="TASK",
                 start_date=date(1990, 1, 3),
                 end_date=date(1990, 1, 4),
             ),
-        }
+        ]
         yield mock
