@@ -19,7 +19,10 @@ class Config(BaseModel):
         description="Prefix for labels identifying specific issue in Jira"
     )
     jira_fields: dict[str, str] = Field(
-        description="Mapping from a property in Jira issue template file to a Jira field name"
+        description=(
+            "Mapping from a property in Jira issue template file to a Jira"
+            " field ID (as in /api/2/field Jira API)"
+        )
     )
 
     connect_timeout: float = Field(
