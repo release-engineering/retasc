@@ -36,6 +36,7 @@ class ProductPagesApi:
         """Gets list of active release names."""
         opt = {
             "product__shortname": product_shortname,
+            "phase__gt": "Concept",
             "phase__lt": "Unsupported",
             "fields": "shortname",
         }
