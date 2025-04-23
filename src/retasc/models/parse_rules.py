@@ -60,7 +60,7 @@ class ParseState:
 
         for rule_data in rule_data_list:
             try:
-                rule = Rule(**rule_data)
+                rule = Rule(**rule_data, rule_file=rule_file)
             except ValidationError as e:
                 self.errors.append(f"Invalid rule file {rule_file!r}: {e}")
                 continue

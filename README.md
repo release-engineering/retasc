@@ -106,6 +106,26 @@ storing any extra information. The label is constructed using
 "jira_label_prefix" configuration, "jira_issue" from the prerequisite and
 "jira_label_suffix" template variable originating from the Product pages input.
 
+## Templating Engine
+
+Some variable and files are evaluated by Jinja2 templating engine.
+
+Template variables:
+
+- `config` - ReTaSC configuration
+- `report` - contains data for the final report
+- `report.state` - current state being updated when prerequisites are
+  processed; can be "Pending", "InProgress" or "Completed"
+- `report.result` - result from the last `condition` prerequisite
+- `today` - today's date in UTC (Python `date` object)
+- `rule_file` - current rule file path
+- `jira_issues` - dict of managed Jira issues; key is Jira issue ID
+- `jira_template_file` - Jira issue template path, available only in Jira
+  template prerequisites
+
+There are also `days` and `weeks` filters for creating Python `timedelta`
+objects for date manipulation. For example: `today + 1|days`
+
 ## Environment Variables
 
 Below is list of environment variables supported by the application and in the

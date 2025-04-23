@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import jinja2.exceptions
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.json_schema import SkipJsonSchema
 
 from retasc.models.inputs import Input
 from retasc.models.inputs.product_pages_releases import ProductPagesReleases
@@ -44,6 +45,7 @@ class Rule(BaseModel):
     prerequisites: list[Prerequisite] = Field(
         description="The prerequisites for the rule."
     )
+    rule_file: SkipJsonSchema[str | None] = None
 
     def update_state(self, context) -> ReleaseRuleState:
         """
@@ -61,6 +63,7 @@ class Rule(BaseModel):
         context.template.params["state"] = rule_state
 
         for prereq in self.prerequisites:
+            context.template.params["rule_file"] = self.rule_file
             with context.report.section(prereq.section_name(context)):
                 try:
                     state = prereq.update_state(context)
