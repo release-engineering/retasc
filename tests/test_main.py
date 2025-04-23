@@ -68,7 +68,7 @@ def test_run(arg, issue_key, capsys):
         "      TargetDate('start_date - 2|weeks')",
         "        target_date: 1989-12-20",
         "    Jira('main')",
-        '      create: {"project": {"key": "TEST"}, "summary": "Main Issue", "labels": ["retasc-id-main-rhel-10.0"]}',
+        '      create: {"project": {"key": "TEST"}, "summary": "Main Issue", "description": "Rule:examples/rules/rules.yaml Template:examples/jira/main.yaml.j2", "labels": ["retasc-id-main-rhel-10.0"]}',
         f"      issue: {issue_key}-1",
         "      Subtask('add_beta_repos')",
         '        create: {"project": {"key": "TEST"}, "summary": "Add Beta Repos", "labels": ["retasc-id-add_beta_repos-rhel-10.0"]}',

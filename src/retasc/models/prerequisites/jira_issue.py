@@ -229,6 +229,7 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
         template variable and added into "jira_issues" template dict with key
         matching the jira_issue.
         """
+        context.template.params["jira_template_file"] = self.template
         jira_issue_id = context.template.render(self.jira_issue)
         issue = _update_issue(jira_issue_id, self.template, self.fields, context)
         context.template.params["jira_issue"] = issue
