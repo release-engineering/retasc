@@ -41,7 +41,7 @@ class PrerequisiteHttp(PrerequisiteBase):
     params: dict[str, Any] = Field(
         description="URL parameters; values can be templates", default_factory=dict
     )
-    json: Any | None = Field(
+    data: Any | None = Field(
         description=dedent("""
             If set, a data (list, dict etc) to encode as JSON and pass in the
             request body.
@@ -52,11 +52,11 @@ class PrerequisiteHttp(PrerequisiteBase):
     def update_state(self, context) -> ReleaseRuleState:
         url = context.template.render(self.url)
         params = render_templates(self.params, context)
-        json = render_templates(self.json, context)
+        data = render_templates(self.data, context)
 
         try:
             context.template.params["http_response"] = context.session.request(
-                self.method, url, params=params, json=json
+                self.method, url, params=params, json=data
             )
         except RequestException as e:
             raise PrerequisiteUpdateStateError(f"HTTP request failed: {e}")

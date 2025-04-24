@@ -57,7 +57,7 @@ def test_prerequisite_http_json_template(mock_context, requests_mock):
     requests_mock.post(url)
 
     data = {"items": [{"data": "{{ 'test' }}"}]}
-    prereq = PrerequisiteHttp(url=url, method="POST", json=data)
+    prereq = PrerequisiteHttp(url=url, method="POST", data=data)
     assert prereq.update_state(mock_context) == ReleaseRuleState.Completed
     assert len(requests_mock.request_history) == 1
     assert requests_mock.request_history[0].json() == {"items": [{"data": "test"}]}
