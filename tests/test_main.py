@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+import json
 import sys
 from textwrap import dedent
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from pytest import fixture, mark, raises
 
@@ -183,3 +184,85 @@ def test_validate_invalid_rule_output(invalid_rule_file, capsys):
     assert "Validation failed: " in stdout
     assert "Invalid rule file" in stdout
     assert stderr == ""
+
+
+def test_report_output_file(tmp_path):
+    report = tmp_path / "report.json"
+    run_main("dry-run", "--report", str(report))
+    assert report.exists()
+    data = json.loads(report.read_text())
+    assert data == {
+        "ProductPagesRelease('rhel-10.0')": {
+            "Example Rule": {
+                "prerequisites": ANY,
+                "state": "InProgress",
+            },
+            "Dependent Rule 1": {
+                "state": "Completed",
+            },
+            "Dependent Rule 2": {
+                "state": "Completed",
+            },
+        },
+    }
+    prereq = data["ProductPagesRelease('rhel-10.0')"]["Example Rule"]["prerequisites"]
+    assert prereq == [
+        {
+            "name": "Condition('major >= 10')",
+            "result": True,
+        },
+        {
+            "name": "Schedule('GA for rhel {{ major }}.{{ minor }}')",
+        },
+        {
+            "name": "TargetDate('start_date - 7|days')",
+            "target_date": "1989-12-25",
+        },
+        {
+            "name": "Rule('Dependent Rule 1')",
+            "prerequisites": [
+                {
+                    "name": "Schedule('TASK')",
+                },
+                {
+                    "name": "TargetDate('start_date - 3|weeks')",
+                    "target_date": "1989-12-13",
+                },
+            ],
+        },
+        {"name": "Rule('Dependent Rule 2')", "prerequisites": ANY},
+        {
+            "subtasks": [
+                {
+                    "name": "Subtask('add_beta_repos')",
+                    "create": ANY,
+                    "issue": "DRYRUN-2",
+                },
+                {
+                    "name": "Subtask('notify_team')",
+                    "create": ANY,
+                    "issue": "DRYRUN-3",
+                },
+            ],
+            "create": ANY,
+            "issue": "DRYRUN-1",
+            "name": "Jira('main')",
+            "state": "InProgress",
+        },
+        {
+            "create": ANY,
+            "issue": "DRYRUN-4",
+            "name": "Jira('secondary')",
+            "state": "InProgress",
+        },
+        {
+            "name": "TargetDate('end_date - 1|days')",
+            "target_date": "1990-01-03",
+        },
+        {
+            "create": ANY,
+            "issue": "DRYRUN-5",
+            "name": "Jira('secondary')",
+            "state": "InProgress",
+        },
+    ]

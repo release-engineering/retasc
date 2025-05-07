@@ -238,7 +238,9 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
 
         for subtask in self.subtasks:
             subtask_id = context.template.render(subtask.jira_issue)
-            with context.report.section(f"Subtask({subtask_id!r})"):
+            with context.report.section(
+                f"Subtask({subtask_id!r})", into_list="subtasks"
+            ):
                 _update_issue(
                     subtask_id,
                     subtask.template,
