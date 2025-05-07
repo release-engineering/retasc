@@ -64,7 +64,9 @@ class Rule(BaseModel):
 
         for prereq in self.prerequisites:
             context.template.params["rule_file"] = self.rule_file
-            with context.report.section(prereq.section_name(context)):
+            with context.report.section(
+                prereq.section_name(context), into_list="prerequisites"
+            ):
                 try:
                     state = prereq.update_state(context)
                 except (

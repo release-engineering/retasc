@@ -13,6 +13,7 @@ class Report:
     data: dict = field(default_factory=dict)
     current_sections: list = field(default_factory=list)
     current_data: dict = field(default_factory=dict)
+    current_list: list | None = None
     jira_issues: dict = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
 
@@ -24,11 +25,16 @@ class Report:
         print(f"{indent}{text.replace('\n', f'{indent}\n')}")
 
     @contextmanager
-    def section(self, state):
+    def section(self, state, *, into_list: str | None = None):
         self.print(str(state))
         self.current_sections.append(state)
         prev_data = self.current_data
-        self.current_data = self.current_data.setdefault(state, {})
+        if into_list:
+            item_list = self.current_data.setdefault(into_list, [])
+            self.current_data = {"name": state}
+            item_list.append(self.current_data)
+        else:
+            self.current_data = self.current_data.setdefault(state, {})
 
         with tracer.start_as_current_span(f"section:{state}"):
             yield
