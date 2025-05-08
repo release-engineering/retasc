@@ -25,18 +25,17 @@ class Report:
         print(f"{indent}{text.replace('\n', f'{indent}\n')}")
 
     @contextmanager
-    def section(self, state, *, into_list: str | None = None):
-        self.print(str(state))
-        self.current_sections.append(state)
+    def section(self, into_list: str, **kwargs):
+        name = kwargs.get("name") or kwargs.get("type")
+        self.print(str(name))
+        self.current_sections.append(name)
         prev_data = self.current_data
-        if into_list:
-            item_list = self.current_data.setdefault(into_list, [])
-            self.current_data = {"name": state}
-            item_list.append(self.current_data)
-        else:
-            self.current_data = self.current_data.setdefault(state, {})
 
-        with tracer.start_as_current_span(f"section:{state}"):
+        item_list = self.current_data.setdefault(into_list, [])
+        self.current_data = kwargs
+        item_list.append(self.current_data)
+
+        with tracer.start_as_current_span(f"section:{name}"):
             yield
 
         self.current_data = prev_data

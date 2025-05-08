@@ -13,10 +13,8 @@ class PrerequisiteVariableString(PrerequisiteBase):
     string: str = Field(description="Variable value - a string template")
 
     def update_state(self, context) -> ReleaseRuleState:
+        context.report.set("variable", self.variable)
         value = context.template.render(self.string)
         context.report.set("value", value)
         context.template.params[self.variable] = value
         return ReleaseRuleState.Completed
-
-    def section_name(self, context) -> str:
-        return f"VariableString({self.variable!r})"

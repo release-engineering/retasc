@@ -41,7 +41,7 @@ def rules_by_input(context: RuntimeContext) -> list[tuple[InputBase, dict, list[
 
 
 def update_state(rule: Rule, context: RuntimeContext):
-    with context.report.section(rule.name):
+    with context.report.section("rules", name=rule.name):
         state = rule.update_state(context)
         context.report.set("state", state.name)
 
@@ -50,7 +50,9 @@ def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
     input_rules = rules_by_input(context)
     for input, values, rules in input_rules:
         context.rule_template_params = {}
-        with context.report.section(input.section_name(values)):
+        section = type(input).__name__
+        with context.report.section("inputs", type=section):
+            context.report.current_data.update(input.report_vars(values))
             yield values, rules
 
 

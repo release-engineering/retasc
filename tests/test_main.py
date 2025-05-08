@@ -192,77 +192,96 @@ def test_report_output_file(tmp_path):
     assert report.exists()
     data = json.loads(report.read_text())
     assert data == {
-        "ProductPagesRelease('rhel-10.0')": {
-            "Example Rule": {
-                "prerequisites": ANY,
-                "state": "InProgress",
-            },
-            "Dependent Rule 1": {
-                "state": "Completed",
-            },
-            "Dependent Rule 2": {
-                "state": "Completed",
-            },
-        },
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "name": "Example Rule",
+                        "prerequisites": ANY,
+                        "state": "InProgress",
+                    },
+                    {
+                        "name": "Dependent Rule 1",
+                        "state": "Completed",
+                    },
+                    {
+                        "name": "Dependent Rule 2",
+                        "state": "Completed",
+                    },
+                ],
+            }
+        ],
     }
-    prereq = data["ProductPagesRelease('rhel-10.0')"]["Example Rule"]["prerequisites"]
+    prereq = data["inputs"][0]["rules"][0]["prerequisites"]
     assert prereq == [
         {
-            "name": "Condition('major >= 10')",
+            "type": "Condition",
+            "condition": "major >= 10",
             "result": True,
         },
+        {"type": "Schedule", "schedule_task": "GA for rhel 10.0"},
         {
-            "name": "Schedule('GA for rhel {{ major }}.{{ minor }}')",
-        },
-        {
-            "name": "TargetDate('start_date - 7|days')",
+            "type": "TargetDate",
+            "target_date_expr": "start_date - 7|days",
             "target_date": "1989-12-25",
         },
         {
-            "name": "Rule('Dependent Rule 1')",
+            "type": "Rule",
+            "rule": "Dependent Rule 1",
             "prerequisites": [
+                {"type": "Schedule", "schedule_task": "TASK"},
                 {
-                    "name": "Schedule('TASK')",
-                },
-                {
-                    "name": "TargetDate('start_date - 3|weeks')",
+                    "type": "TargetDate",
+                    "target_date_expr": "start_date - 3|weeks",
                     "target_date": "1989-12-13",
                 },
             ],
         },
-        {"name": "Rule('Dependent Rule 2')", "prerequisites": ANY},
         {
+            "type": "Rule",
+            "rule": "Dependent Rule 2",
+            "prerequisites": ANY,
+        },
+        {
+            "type": "JiraIssue",
+            "jira_issue": "main",
+            "create": ANY,
+            "issue_id": "DRYRUN-1",
             "subtasks": [
                 {
-                    "name": "Subtask('add_beta_repos')",
+                    "type": "Subtask",
+                    "jira_issue": "add_beta_repos",
                     "create": ANY,
-                    "issue": "DRYRUN-2",
+                    "issue_id": "DRYRUN-2",
                 },
                 {
-                    "name": "Subtask('notify_team')",
+                    "type": "Subtask",
+                    "jira_issue": "notify_team",
                     "create": ANY,
-                    "issue": "DRYRUN-3",
+                    "issue_id": "DRYRUN-3",
                 },
             ],
-            "create": ANY,
-            "issue": "DRYRUN-1",
-            "name": "Jira('main')",
             "state": "InProgress",
         },
         {
+            "type": "JiraIssue",
+            "jira_issue": "secondary",
             "create": ANY,
-            "issue": "DRYRUN-4",
-            "name": "Jira('secondary')",
+            "issue_id": "DRYRUN-4",
             "state": "InProgress",
         },
         {
-            "name": "TargetDate('end_date - 1|days')",
+            "type": "TargetDate",
+            "target_date_expr": "end_date - 1|days",
             "target_date": "1990-01-03",
         },
         {
+            "type": "JiraIssue",
+            "jira_issue": "secondary",
             "create": ANY,
-            "issue": "DRYRUN-5",
-            "name": "Jira('secondary')",
+            "issue_id": "DRYRUN-5",
             "state": "InProgress",
         },
     ]

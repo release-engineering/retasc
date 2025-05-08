@@ -27,7 +27,5 @@ class PrerequisiteRule(PrerequisiteBase):
     def update_state(self, context) -> ReleaseRuleState:
         """Return Completed only if all rules were closed."""
         rule = context.template.render(self.rule)
+        context.report.set("rule", rule)
         return context.rules[rule].update_state(context)
-
-    def section_name(self, context) -> str:
-        return f"Rule({self.rule!r})"

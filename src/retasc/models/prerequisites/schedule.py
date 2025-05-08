@@ -120,12 +120,11 @@ class PrerequisiteSchedule(PrerequisiteBase):
         release = context.template.params["release"]
         schedule = context.pp.release_schedules(release)
         if schedule == []:
+            context.report.set("schedule_task", self.schedule_task)
             context.report.set("pending_reason", "No schedule available yet")
             return ReleaseRuleState.Pending
 
         local_params = self._params(schedule, context)
+        context.report.set("schedule_task", local_params["schedule_task"])
         context.template.params.update(local_params)
         return ReleaseRuleState.Completed
-
-    def section_name(self, context) -> str:
-        return f"Schedule({self.schedule_task!r})"

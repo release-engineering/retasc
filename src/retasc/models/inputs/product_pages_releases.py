@@ -47,5 +47,5 @@ class ProductPagesReleases(InputBase):
             }
             yield data
 
-    def section_name(self, values: dict) -> str:
-        return f"ProductPagesRelease({values['release']!r})"
+    def report_vars(self, values: dict) -> dict:
+        return {"release": values["release"]}
