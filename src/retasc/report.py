@@ -25,25 +25,26 @@ class Report:
         print(f"{indent}{text.replace('\n', f'{indent}\n')}")
 
     @contextmanager
-    def section(self, state, *, into_list: str | None = None):
-        self.print(str(state))
-        self.current_sections.append(state)
+    def section(self, parent: str, type: str, name: str):
+        section = f"{type}({name!r})"
+        self.print(section)
+        self.current_sections.append(section)
         prev_data = self.current_data
-        if into_list:
-            item_list = self.current_data.setdefault(into_list, [])
-            self.current_data = {"name": state}
-            item_list.append(self.current_data)
-        else:
-            self.current_data = self.current_data.setdefault(state, {})
 
-        with tracer.start_as_current_span(f"section:{state}"):
+        item_list = self.current_data.setdefault(parent, [])
+        self.current_data = {"type": type}
+        item_list.append(self.current_data)
+
+        with tracer.start_as_current_span(f"section:{section}"):
             yield
 
         self.current_data = prev_data
         self.current_sections.pop()
 
     def set(self, key, value):
-        self.print(f"{key}: {value}")
+        # Print the value only if it's not already in the current section name
+        if not self.current_sections or f"({value!r})" not in self.current_sections[-1]:
+            self.print(f"{key}: {value}")
         self.current_data[key] = deepcopy(value)
 
     def add_error(self, error: str):

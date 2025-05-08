@@ -14,7 +14,7 @@ def test_input_base():
     with raises(NotImplementedError):
         base.values(Mock())
     with raises(NotImplementedError):
-        base.section_name({})
+        base.report_vars({})
 
 
 def test_prerequisite_base():
@@ -22,8 +22,6 @@ def test_prerequisite_base():
     assert base.validation_errors([], Mock()) == []
     with raises(NotImplementedError):
         base.update_state(Mock())
-    with raises(NotImplementedError):
-        base.section_name(Mock())
 
 
 def test_invalid_prerequisite_type(rule_dict):
