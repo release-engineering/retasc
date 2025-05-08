@@ -15,10 +15,8 @@ class PrerequisiteVariable(PrerequisiteBase):
     )
 
     def update_state(self, context) -> ReleaseRuleState:
+        context.report.set("variable", self.variable)
         value = context.template.evaluate(self.value)
         context.report.set("value", value)
         context.template.params[self.variable] = value
         return ReleaseRuleState.Completed
-
-    def section_name(self, context) -> str:
-        return f"Variable({self.variable!r})"

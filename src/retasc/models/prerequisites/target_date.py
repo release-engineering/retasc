@@ -43,6 +43,7 @@ class PrerequisiteTargetDate(PrerequisiteBase):
         Return Completed if target date is earlier than today,
         otherwise return Pending.
         """
+        context.report.set("target_date_expr", self.target_date)
         target_date = context.template.evaluate(self.target_date)
         context.template.params["target_date"] = target_date
         today = context.template.env.globals["today"]
@@ -64,6 +65,3 @@ class PrerequisiteTargetDate(PrerequisiteBase):
             if days_remaining <= 0
             else ReleaseRuleState.Pending
         )
-
-    def section_name(self, context) -> str:
-        return f"TargetDate({self.target_date!r})"

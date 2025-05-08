@@ -54,7 +54,10 @@ class Rule(BaseModel):
         - In-progress, if some prerequisites are in In-progress but none are Pending
         - Completed, if all prerequisites are Completed
         """
+        context.report.current_data["rule"] = self.name
+
         params = context.rule_template_params.get(self.name)
+
         if params is not None:
             context.template.params.update(params)
             return params["state"]
@@ -64,9 +67,9 @@ class Rule(BaseModel):
 
         for prereq in self.prerequisites:
             context.template.params["rule_file"] = self.rule_file
-            with context.report.section(
-                prereq.section_name(context), into_list="prerequisites"
-            ):
+            section = type(prereq).__name__.replace("Prerequisite", "")
+            name = list(prereq.model_dump().values())[0]
+            with context.report.section("prerequisites", type=section, name=name):
                 try:
                     state = prereq.update_state(context)
                 except (

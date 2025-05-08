@@ -75,7 +75,7 @@ def _edit_issue(
 
 def _report_jira_issue(issue: dict, jira_issue_id: str, context):
     context.report.jira_issues[jira_issue_id] = issue
-    context.report.set("issue", issue["key"])
+    context.report.set("issue_id", issue["key"])
 
 
 def _create_issue(
@@ -231,6 +231,7 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
         """
         context.template.params["jira_template_file"] = self.template
         jira_issue_id = context.template.render(self.jira_issue)
+        context.report.set("jira_issue", jira_issue_id)
         issue = _update_issue(jira_issue_id, self.template, self.fields, context)
         context.template.params["jira_issue"] = issue
         if _is_resolved(issue):
@@ -238,9 +239,8 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
 
         for subtask in self.subtasks:
             subtask_id = context.template.render(subtask.jira_issue)
-            with context.report.section(
-                f"Subtask({subtask_id!r})", into_list="subtasks"
-            ):
+            with context.report.section("subtasks", type="Subtask", name=subtask_id):
+                context.report.set("jira_issue", subtask_id)
                 _update_issue(
                     subtask_id,
                     subtask.template,
@@ -250,10 +250,6 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
                 )
 
         return ReleaseRuleState.InProgress
-
-    def section_name(self, context) -> str:
-        jira_issue_id = context.template.render(self.jira_issue)
-        return f"Jira({jira_issue_id!r})"
 
 
 def templates_root() -> str:

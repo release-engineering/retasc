@@ -53,11 +53,12 @@ def test_run(arg, issue_key, capsys):
     stdout, stderr = capsys.readouterr()
     assert stderr == ""
     expected_lines = [
-        "ProductPagesRelease('rhel-10.0')",
-        "  Example Rule",
+        "ProductPagesReleases('rhel-10.0')",
+        "  Rule('Example Rule')",
         "    Condition('major >= 10')",
         "      result: True",
         "    Schedule('GA for rhel {{ major }}.{{ minor }}')",
+        "      schedule_task: GA for rhel 10.0",
         "    TargetDate('start_date - 7|days')",
         "      target_date: 1989-12-25",
         "    Rule('Dependent Rule 1')",
@@ -68,36 +69,36 @@ def test_run(arg, issue_key, capsys):
         "      Schedule('TASK')",
         "      TargetDate('start_date - 2|weeks')",
         "        target_date: 1989-12-20",
-        "    Jira('main')",
+        "    JiraIssue('main')",
         '      create: {"project": {"key": "TEST"}, "summary": "Main Issue", "description": "Rule:examples/rules/rules.yaml Template:examples/jira/main.yaml.j2", "labels": ["retasc-id-main-rhel-10.0"]}',
-        f"      issue: {issue_key}-1",
+        f"      issue_id: {issue_key}-1",
         "      Subtask('add_beta_repos')",
         '        create: {"project": {"key": "TEST"}, "summary": "Add Beta Repos", "labels": ["retasc-id-add_beta_repos-rhel-10.0"]}',
-        f"        issue: {issue_key}-2",
+        f"        issue_id: {issue_key}-2",
         "      Subtask('notify_team')",
         '        create: {"project": {"key": "TEAM-RHEL"}, "summary": "Notify Team", "labels": ["notify-rhel-10.0", "retasc-id-notify_team-rhel-10.0"], "customfield_123": null}',
-        f"        issue: {issue_key}-3",
+        f"        issue_id: {issue_key}-3",
         "      state: InProgress",
-        "    Jira('secondary')",
+        "    JiraIssue('secondary')",
         '      create: {"project": {"key": "TEST"}, "summary": "Secondary Issue", "labels": ["retasc-id-secondary-rhel-10.0"]}',
-        f"      issue: {issue_key}-4",
+        f"      issue_id: {issue_key}-4",
         "      state: InProgress",
         "    TargetDate('end_date - 1|days')",
         "      target_date: 1990-01-03",
-        "    Jira('secondary')",
+        "    JiraIssue('secondary')",
         '      create: {"labels": ["test", "retasc-id-secondary-rhel-10.0"]}',
-        f"      issue: {issue_key}-5",
+        f"      issue_id: {issue_key}-5",
         "      state: InProgress",
         "    state: InProgress",
-        "  Dependent Rule 1",
+        "  Rule('Dependent Rule 1')",
         "    state: Completed",
-        "  Dependent Rule 2",
+        "  Rule('Dependent Rule 2')",
         "    state: Completed",
     ]
     actual_lines = [
         line
         for line in stdout.split("\n")
-        if line.startswith(" ") or line.startswith("ProductPagesRelease")
+        if line.startswith(" ") or line.startswith("ProductPagesReleases")
     ]
     assert expected_lines == actual_lines
 
@@ -111,8 +112,8 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
     ]
     expected_error = dedent("""
         ❌ Errors:
-        ProductPagesRelease('rhel-10.0')
-          Example Rule
+        ProductPagesReleases('rhel-10.0')
+          Rule('Example Rule')
             Schedule('GA for rhel {{ major }}.{{ minor }}')
               Failed to find schedule task with name 'GA for rhel 10.0'
     """).strip()
@@ -120,20 +121,20 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
     stdout, stderr = capsys.readouterr()
     assert stderr == ""
     expected_lines = [
-        "ProductPagesRelease('rhel-10.0')",
-        "  Example Rule",
+        "ProductPagesReleases('rhel-10.0')",
+        "  Rule('Example Rule')",
         "    Condition('major >= 10')",
         "      result: True",
         "    Schedule('GA for rhel {{ major }}.{{ minor }}')",
         "      error: ❌ Failed to find schedule task with name 'GA for rhel 10.0'",
         "      state: Pending",
         "    state: Pending",
-        "  Dependent Rule 1",
+        "  Rule('Dependent Rule 1')",
         "    Schedule('TASK')",
         "    TargetDate('start_date - 3|weeks')",
         "      target_date: 1989-12-13",
         "    state: Completed",
-        "  Dependent Rule 2",
+        "  Rule('Dependent Rule 2')",
         "    Schedule('TASK')",
         "    TargetDate('start_date - 2|weeks')",
         "      target_date: 1989-12-20",
@@ -142,7 +143,7 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
     actual_lines = [
         line
         for line in stdout.split("\n")
-        if line.startswith(" ") or line.startswith("ProductPagesRelease")
+        if line.startswith(" ") or line.startswith("ProductPagesReleases")
     ]
     assert expected_lines == actual_lines
 
@@ -192,77 +193,96 @@ def test_report_output_file(tmp_path):
     assert report.exists()
     data = json.loads(report.read_text())
     assert data == {
-        "ProductPagesRelease('rhel-10.0')": {
-            "Example Rule": {
-                "prerequisites": ANY,
-                "state": "InProgress",
-            },
-            "Dependent Rule 1": {
-                "state": "Completed",
-            },
-            "Dependent Rule 2": {
-                "state": "Completed",
-            },
-        },
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": "Example Rule",
+                        "prerequisites": ANY,
+                        "state": "InProgress",
+                    },
+                    {
+                        "rule": "Dependent Rule 1",
+                        "state": "Completed",
+                    },
+                    {
+                        "rule": "Dependent Rule 2",
+                        "state": "Completed",
+                    },
+                ],
+            }
+        ],
     }
-    prereq = data["ProductPagesRelease('rhel-10.0')"]["Example Rule"]["prerequisites"]
+    prereq = data["inputs"][0]["rules"][0]["prerequisites"]
     assert prereq == [
         {
-            "name": "Condition('major >= 10')",
+            "type": "Condition",
+            "condition": "major >= 10",
             "result": True,
         },
+        {"type": "Schedule", "schedule_task": "GA for rhel 10.0"},
         {
-            "name": "Schedule('GA for rhel {{ major }}.{{ minor }}')",
-        },
-        {
-            "name": "TargetDate('start_date - 7|days')",
+            "type": "TargetDate",
+            "target_date_expr": "start_date - 7|days",
             "target_date": "1989-12-25",
         },
         {
-            "name": "Rule('Dependent Rule 1')",
+            "type": "Rule",
+            "rule": "Dependent Rule 1",
             "prerequisites": [
+                {"type": "Schedule", "schedule_task": "TASK"},
                 {
-                    "name": "Schedule('TASK')",
-                },
-                {
-                    "name": "TargetDate('start_date - 3|weeks')",
+                    "type": "TargetDate",
+                    "target_date_expr": "start_date - 3|weeks",
                     "target_date": "1989-12-13",
                 },
             ],
         },
-        {"name": "Rule('Dependent Rule 2')", "prerequisites": ANY},
         {
+            "type": "Rule",
+            "rule": "Dependent Rule 2",
+            "prerequisites": ANY,
+        },
+        {
+            "type": "JiraIssue",
+            "jira_issue": "main",
+            "create": ANY,
+            "issue_id": "DRYRUN-1",
             "subtasks": [
                 {
-                    "name": "Subtask('add_beta_repos')",
+                    "type": "Subtask",
+                    "jira_issue": "add_beta_repos",
                     "create": ANY,
-                    "issue": "DRYRUN-2",
+                    "issue_id": "DRYRUN-2",
                 },
                 {
-                    "name": "Subtask('notify_team')",
+                    "type": "Subtask",
+                    "jira_issue": "notify_team",
                     "create": ANY,
-                    "issue": "DRYRUN-3",
+                    "issue_id": "DRYRUN-3",
                 },
             ],
-            "create": ANY,
-            "issue": "DRYRUN-1",
-            "name": "Jira('main')",
             "state": "InProgress",
         },
         {
+            "type": "JiraIssue",
+            "jira_issue": "secondary",
             "create": ANY,
-            "issue": "DRYRUN-4",
-            "name": "Jira('secondary')",
+            "issue_id": "DRYRUN-4",
             "state": "InProgress",
         },
         {
-            "name": "TargetDate('end_date - 1|days')",
+            "type": "TargetDate",
+            "target_date_expr": "end_date - 1|days",
             "target_date": "1990-01-03",
         },
         {
+            "type": "JiraIssue",
+            "jira_issue": "secondary",
             "create": ANY,
-            "issue": "DRYRUN-5",
-            "name": "Jira('secondary')",
+            "issue_id": "DRYRUN-5",
             "state": "InProgress",
         },
     ]

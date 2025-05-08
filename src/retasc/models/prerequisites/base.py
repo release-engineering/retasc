@@ -30,7 +30,3 @@ class PrerequisiteBase(BaseModel):
         Returns new prerequisite state.
         """
         raise NotImplementedError()
-
-    def section_name(self, context) -> str:
-        """Section name in report."""
-        raise NotImplementedError()
