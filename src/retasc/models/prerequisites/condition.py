@@ -26,8 +26,6 @@ class PrerequisiteCondition(PrerequisiteBase):
 
     def update_state(self, context) -> ReleaseRuleState:
         is_completed = context.template.evaluate(self.condition)
+        context.report.set("condition", self.condition)
         context.report.set("result", is_completed)
         return ReleaseRuleState.Completed if is_completed else ReleaseRuleState.Pending
-
-    def section_name(self, context) -> str:
-        return f"Condition({self.condition!r})"

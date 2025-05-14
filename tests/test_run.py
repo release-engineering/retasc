@@ -24,7 +24,7 @@ DUMMY_ISSUE = """
 summary: test
 """
 DUMMY_ISSUE_FIELDS = {"summary": "test"}
-INPUT = "ProductPagesRelease('rhel-10.0')"
+INPUT = "ProductPagesReleases('rhel-10.0')"
 
 
 def call_run(*, additional_jira_fields: dict = {}):
@@ -59,7 +59,15 @@ def test_parse_version():
 def test_run_rule_simple(factory):
     factory.new_rule(name="rule1")
     report = call_run()
-    assert report.data == {INPUT: {"rule1": {"state": "Completed"}}}
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [{"rule": "rule1", "state": "Completed"}],
+            }
+        ]
+    }
 
 
 def test_run_rule_update_state_once(factory, mock_pp):
@@ -82,7 +90,7 @@ def test_run_rule_update_state_once(factory, mock_pp):
         return ReleaseRuleState.Completed
 
     condition_prereq.update_state.side_effect = mock_update_state
-    condition_prereq.section_name.return_value = "TEST"
+    condition_prereq.model_dump.return_value = {"condition": "true"}
 
     rule_dependency = factory.new_rule(prerequisites=[condition_prereq])
     rule1 = factory.new_rule(
@@ -92,24 +100,42 @@ def test_run_rule_update_state_once(factory, mock_pp):
         prerequisites=[PrerequisiteRule(rule=rule_dependency.name)]
     )
     report = call_run()
-    expected_rule_data = {
-        f"Rule({rule_dependency.name!r})": {},
-        "state": "Completed",
-    }
-    inputs = (
-        "ProductPagesRelease('rhel-9.0')",
-        INPUT,
-    )
+    inputs = ("rhel-9.0", "rhel-10.0")
     assert report.data == {
-        input: {
-            rule_dependency.name: {
-                "TEST": {"counter": i},
-                "state": "Completed",
-            },
-            rule1.name: expected_rule_data,
-            rule2.name: expected_rule_data,
-        }
-        for i, input in enumerate(inputs, start=1)
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": input,
+                "rules": [
+                    {
+                        "rule": rule_dependency.name,
+                        "state": "Completed",
+                        "prerequisites": [{"type": "Mock", "counter": i}],
+                    },
+                    {
+                        "rule": rule1.name,
+                        "state": "Completed",
+                        "prerequisites": [
+                            {
+                                "rule": rule_dependency.name,
+                                "type": "Rule",
+                            },
+                        ],
+                    },
+                    {
+                        "rule": rule2.name,
+                        "state": "Completed",
+                        "prerequisites": [
+                            {
+                                "rule": rule_dependency.name,
+                                "type": "Rule",
+                            },
+                        ],
+                    },
+                ],
+            }
+            for i, input in enumerate(inputs, start=1)
+        ]
     }
     assert len(condition_prereq.update_state.mock_calls) == 2
 
@@ -119,16 +145,27 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
-                    "issue": "TEST-1",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
+                                "issue_id": "TEST-1",
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_called_once_with(
         {
@@ -174,18 +211,29 @@ def test_run_rule_jira_search_once_per_prerequisite(factory, mock_jira, mock_pp)
     rules = [factory.new_rule(prerequisites=[jira_issue_prereq]) for _ in range(2)]
     report = call_run()
     assert report.data == {
-        f"ProductPagesRelease('{release}')": {
-            rule.name: {
-                "Jira('test')": {
-                    "create": f'{{"summary": "test", "labels": ["retasc-id-test-{release}"]}}',
-                    "issue": ANY,
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": release,
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test",
+                                "create": f'{{"summary": "test", "labels": ["retasc-id-test-{release}"]}}',
+                                "issue_id": ANY,
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                    for rule in rules
+                ],
             }
-            for rule in rules
-        }
-        for release in releases
+            for release in releases
+        ]
     }
     assert mock_jira.search_issues.mock_calls == [
         call(
@@ -219,16 +267,27 @@ def test_run_rule_jira_search_once_per_jql(factory, mock_jira):
     ]
     report = call_run()
     assert report.data == {
-        f"JiraIssues('{issue_id}')": {
-            rule.name: {
-                f"Condition({condition!r})": {
-                    "result": [f"{issue_id}", f"This is {issue_id}"],
-                },
-                "state": "Completed",
+        "inputs": [
+            {
+                "type": "JiraIssues",
+                "jira_issue": issue_id,
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "Condition",
+                                "condition": condition,
+                                "result": [issue_id, f"This is {issue_id}"],
+                            }
+                        ],
+                        "state": "Completed",
+                    }
+                    for rule in rules
+                ],
             }
-            for rule in rules
-        }
-        for issue_id in issue_ids
+            for issue_id in issue_ids
+        ]
     }
     assert mock_jira.search_issues.mock_calls == [call(jql=jql, fields=["description"])]
 
@@ -246,31 +305,50 @@ def test_run_rule_jira_issue_create_subtasks(factory):
     rule = factory.new_rule(prerequisites=[jira_issue_prereq, condition_prereq])
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_3')": {
-                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_3-rhel-10.0"]}',
-                    "issue": "TEST-1",
-                    "state": "InProgress",
-                    "Subtask('test_jira_template_1')": {
-                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
-                        "issue": "TEST-2",
-                    },
-                    "Subtask('test_jira_template_2')": {
-                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
-                        "issue": "TEST-3",
-                    },
-                },
-                f"Condition({condition!r})": {
-                    "result": [
-                        "test_jira_template_1",
-                        "test_jira_template_2",
-                        "test_jira_template_3",
-                    ],
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_3",
+                                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_3-rhel-10.0"]}',
+                                "issue_id": "TEST-1",
+                                "state": "InProgress",
+                                "subtasks": [
+                                    {
+                                        "type": "Subtask",
+                                        "jira_issue": "test_jira_template_1",
+                                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
+                                        "issue_id": "TEST-2",
+                                    },
+                                    {
+                                        "type": "Subtask",
+                                        "jira_issue": "test_jira_template_2",
+                                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
+                                        "issue_id": "TEST-3",
+                                    },
+                                ],
+                            },
+                            {
+                                "type": "Condition",
+                                "condition": condition,
+                                "result": [
+                                    "test_jira_template_1",
+                                    "test_jira_template_2",
+                                    "test_jira_template_3",
+                                ],
+                            },
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -289,15 +367,26 @@ def test_run_rule_jira_issue_in_progress(factory, mock_jira):
     ]
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_not_called()
@@ -324,15 +413,26 @@ def test_run_rule_jira_issue_not_unique(factory, mock_jira):
     )
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "error": expected_error,
-                    "state": "Pending",
-                },
-                "state": "Pending",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "state": "Pending",
+                                "error": expected_error,
+                            }
+                        ],
+                        "state": "Pending",
+                    }
+                ],
             }
-        }
+        ]
     }
 
     mock_jira.create_issue.assert_not_called()
@@ -354,16 +454,27 @@ def test_run_rule_jira_issue_in_progress_update(factory, mock_jira):
     ]
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "update": '{"summary": "test"}',
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "update": '{"summary": "test"}',
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once_with("TEST-1", {"summary": "test"})
@@ -396,16 +507,27 @@ def test_run_rule_jira_issue_update_labels(factory, mock_jira):
     ]
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "update": json.dumps({"labels": expected_labels}),
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "update": json.dumps({"labels": expected_labels}),
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once_with("TEST-1", {"labels": expected_labels})
@@ -430,16 +552,27 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
     expected_fields = {"assignee": {"key": "alice"}}
     report = call_run(additional_jira_fields={"assignee": "assignee"})
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "update": json.dumps(expected_fields),
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "update": json.dumps(expected_fields),
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_fields)
@@ -448,15 +581,26 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
     current_value["name"] = "Alice"
     report = call_run(additional_jira_fields={"assignee": "assignee"})
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once()
@@ -489,16 +633,27 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
     additional_jira_fields = {"service": "customfield_123"}
     report = call_run(additional_jira_fields=additional_jira_fields)
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "update": json.dumps(expected_fields),
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "update": json.dumps(expected_fields),
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_fields)
@@ -518,15 +673,26 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
     ]
     report = call_run(additional_jira_fields=additional_jira_fields)
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
             }
-        }
+        ]
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once()
@@ -546,12 +712,25 @@ def test_run_rule_jira_issue_completed(factory, mock_jira):
     ]
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {"issue": "TEST-1"},
-                "state": "Completed",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                            }
+                        ],
+                        "state": "Completed",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -572,28 +751,41 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
     # A Jira issues are created/updated only if none of the preceding
     # prerequisites are Pending (all preceding conditions must pass).
     if result:
-        issue_prereq = {
-            "Jira('test_jira_template_1')": {
+        issue_prereq = [
+            {
+                "type": "JiraIssue",
+                "jira_issue": "test_jira_template_1",
                 "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
-                "issue": "TEST-1",
+                "issue_id": "TEST-1",
                 "state": "InProgress",
             }
-        }
+        ]
     else:
-        issue_prereq = {}
+        issue_prereq = []
 
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                f"Condition({condition_expr!r})": {
-                    "result": result,
-                    **({} if result else {"state": "Pending"}),
-                },
-                **issue_prereq,
-                "state": "InProgress" if result else "Pending",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "Condition",
+                                "condition": condition_expr,
+                                "result": result,
+                                **({} if result else {"state": "Pending"}),
+                            },
+                        ]
+                        + issue_prereq,
+                        "state": "InProgress" if result else "Pending",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -606,26 +798,42 @@ def test_run_rule_template_error(factory):
     report = call_run()
     expected_error = "'bad_template_variable' is undefined"
     assert report.data == {
-        INPUT: {
-            rule1.name: {
-                "Condition('bad_template_variable')": {
-                    "error": f"❌ {expected_error}",
-                    "state": "Pending",
-                },
-                "state": "Pending",
-            },
-            rule2.name: {
-                "Condition('true')": {
-                    "result": True,
-                },
-                "state": "Completed",
-            },
-        }
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule1.name,
+                        "prerequisites": [
+                            {
+                                "type": "Condition",
+                                "condition": "bad_template_variable",
+                                "error": f"❌ {expected_error}",
+                                "state": "Pending",
+                            }
+                        ],
+                        "state": "Pending",
+                    },
+                    {
+                        "rule": rule2.name,
+                        "prerequisites": [
+                            {
+                                "type": "Condition",
+                                "condition": "true",
+                                "result": True,
+                            }
+                        ],
+                        "state": "Completed",
+                    },
+                ],
+            }
+        ]
     }
     assert report.errors == [
         dedent(f"""
             {INPUT}
-              {rule1.name}
+              Rule({rule1.name!r})
                 Condition('bad_template_variable')
                   {expected_error}
         """).strip()
@@ -656,7 +864,7 @@ def test_run_rule_schedule_target_date(target_date, is_draft, result, mock_pp, f
             is_draft=is_draft,
         ),
     ]
-    rule = factory.new_rule(
+    factory.new_rule(
         prerequisites=[
             PrerequisiteSchedule(schedule_task="TASK"),
             PrerequisiteTargetDate(target_date=target_date),
@@ -665,7 +873,7 @@ def test_run_rule_schedule_target_date(target_date, is_draft, result, mock_pp, f
 
     state = "Completed" if result else "Pending"
     report = call_run()
-    assert report.data[INPUT][rule.name]["state"] == state
+    assert report.data["inputs"][0]["rules"][0]["state"] == state
 
 
 def test_run_rule_schedule_missing(mock_pp, factory):
@@ -673,11 +881,16 @@ def test_run_rule_schedule_missing(mock_pp, factory):
     rule = factory.new_rule(prerequisites=[PrerequisiteSchedule(schedule_task="TASK")])
 
     report = call_run()
-    assert report.data[INPUT][rule.name] == {
-        "Schedule('TASK')": {
-            "state": "Pending",
-            "pending_reason": "No schedule available yet",
-        },
+    assert report.data["inputs"][0]["rules"][0] == {
+        "rule": rule.name,
+        "prerequisites": [
+            {
+                "type": "Schedule",
+                "schedule_task": "TASK",
+                "state": "Pending",
+                "pending_reason": "No schedule available yet",
+            }
+        ],
         "state": "Pending",
     }
 
@@ -704,11 +917,11 @@ def test_run_rule_schedule_params(condition_expr, result, mock_pp, factory):
     ]
     schedule = PrerequisiteSchedule(schedule_task="TASK")
     condition = PrerequisiteCondition(condition=condition_expr)
-    rule = factory.new_rule(prerequisites=[schedule, condition])
+    factory.new_rule(prerequisites=[schedule, condition])
 
     state = "Completed" if result else "Pending"
     report = call_run()
-    assert report.data[INPUT][rule.name]["state"] == state
+    assert report.data["inputs"][0]["rules"][0]["state"] == state
 
 
 def test_run_rule_jira_issue_reserved_labels(factory):
@@ -722,15 +935,26 @@ def test_run_rule_jira_issue_reserved_labels(factory):
     )
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "error": expected_error,
-                    "state": "Pending",
-                },
-                "state": "Pending",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "error": expected_error,
+                                "state": "Pending",
+                            }
+                        ],
+                        "state": "Pending",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -740,15 +964,26 @@ def test_run_rule_jira_issue_labels_must_be_list(factory):
     expected_error = '❌ Jira issue field "labels" must be a list'
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Jira('test_jira_template_1')": {
-                    "error": expected_error,
-                    "state": "Pending",
-                },
-                "state": "Pending",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "error": expected_error,
+                                "state": "Pending",
+                            }
+                        ],
+                        "state": "Pending",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -771,15 +1006,26 @@ def test_run_rule_jira_issue_input(factory, mock_jira):
     )
     report = call_run()
     assert report.data == {
-        f"JiraIssues('TEST-{i}')": {
-            rule.name: {
-                f"Condition({condition!r})": {
-                    "result": issue,
-                },
-                "state": "Completed",
+        "inputs": [
+            {
+                "type": "JiraIssues",
+                "jira_issue": f"TEST-{i}",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "Condition",
+                                "condition": condition,
+                                "result": issue,
+                            }
+                        ],
+                        "state": "Completed",
+                    }
+                ],
             }
-        }
-        for i, issue in enumerate(mock_jira.search_issues.return_value, start=1)
+            for i, issue in enumerate(mock_jira.search_issues.return_value, start=1)
+        ]
     }
 
 
@@ -803,14 +1049,25 @@ def test_run_rule_jira_issue_input_field_names(factory, mock_jira):
         "fields": {"human_readable_name": "test_value"},
     }
     assert report.data == {
-        "JiraIssues('TEST-1')": {
-            rule.name: {
-                "Condition('jira_issue')": {
-                    "result": expected_issue,
-                },
-                "state": "Completed",
+        "inputs": [
+            {
+                "type": "JiraIssues",
+                "jira_issue": "TEST-1",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "Condition",
+                                "condition": "jira_issue",
+                                "result": expected_issue,
+                            }
+                        ],
+                        "state": "Completed",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -839,27 +1096,45 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
     )
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule1.name: {
-                "Jira('test_jira_template_1')": {
-                    "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
-                    "issue": "TEST-1",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
-            },
-            rule2.name: {
-                f"Rule({rule1.name!r})": {
-                    "state": "InProgress",
-                },
-                "Jira('test_jira_template_2')": {
-                    "create": '{"summary": "depends on TEST-1", "description": "dependency is In Progress", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
-                    "issue": "TEST-2",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
-            },
-        }
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule1.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
+                                "issue_id": "TEST-1",
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    },
+                    {
+                        "rule": rule2.name,
+                        "prerequisites": [
+                            {
+                                "type": "Rule",
+                                "rule": rule1.name,
+                                "state": "InProgress",
+                            },
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_2",
+                                "create": '{"summary": "depends on TEST-1", "description": "dependency is In Progress", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
+                                "issue_id": "TEST-2",
+                                "state": "InProgress",
+                            },
+                        ],
+                        "state": "InProgress",
+                    },
+                ],
+            }
+        ]
     }
 
     # mock existing issues in Jira for the second run
@@ -890,23 +1165,42 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
     mock_jira.search_issues.side_effect = search_issues
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule1.name: {
-                "Jira('test_jira_template_1')": {
-                    "issue": "TEST-1",
-                },
-                "state": "Completed",
-            },
-            rule2.name: {
-                f"Rule({rule1.name!r})": {},
-                "Jira('test_jira_template_2')": {
-                    "update": '{"description": "dependency is Completed"}',
-                    "issue": "TEST-2",
-                    "state": "InProgress",
-                },
-                "state": "InProgress",
-            },
-        }
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule1.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                            }
+                        ],
+                        "state": "Completed",
+                    },
+                    {
+                        "rule": rule2.name,
+                        "prerequisites": [
+                            {
+                                "type": "Rule",
+                                "rule": rule1.name,
+                            },
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_2",
+                                "issue_id": "TEST-2",
+                                "update": '{"description": "dependency is Completed"}',
+                                "state": "InProgress",
+                            },
+                        ],
+                        "state": "InProgress",
+                    },
+                ],
+            }
+        ]
     }
 
 
@@ -923,13 +1217,30 @@ def test_run_rule_prerequsite_variable(factory):
     factory.add_rule(rule)
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "Variable('test_var')": {"value": "rhel-10.0"},
-                "Condition('test_var')": {"result": "rhel-10.0"},
-                "state": "Completed",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "Variable",
+                                "variable": "test_var",
+                                "value": "rhel-10.0",
+                            },
+                            {
+                                "type": "Condition",
+                                "condition": "test_var",
+                                "result": "rhel-10.0",
+                            },
+                        ],
+                        "state": "Completed",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -946,13 +1257,30 @@ def test_run_rule_prerequsite_variable_string(factory):
     factory.add_rule(rule)
     report = call_run()
     assert report.data == {
-        INPUT: {
-            rule.name: {
-                "VariableString('test_var')": {"value": "rhel-10.0"},
-                "Condition('test_var')": {"result": "rhel-10.0"},
-                "state": "Completed",
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "VariableString",
+                                "variable": "test_var",
+                                "value": "rhel-10.0",
+                            },
+                            {
+                                "type": "Condition",
+                                "condition": "test_var",
+                                "result": "rhel-10.0",
+                            },
+                        ],
+                        "state": "Completed",
+                    }
+                ],
             }
-        }
+        ]
     }
 
 
@@ -996,29 +1324,75 @@ def test_run_rule_inherit_params(factory):
         factory.add_rule(Rule(**rule_data))
     report = call_run()
     assert report.data == {
-        INPUT: {
-            "rule-1": {
-                "VariableString('test_var')": {"value": "rule-1"},
-                "Condition('test_var')": {"result": "rule-1"},
-                "state": "Completed",
-            },
-            "rule-2": {
-                "Rule('rule-1')": {},
-                "Condition('test_var')": {"result": "rule-1"},
-                "state": "Completed",
-            },
-            "rule-3": {
-                "VariableString('test_var')": {"value": "rule-2"},
-                "Rule('rule-1')": {},
-                "Condition('test_var')": {"result": "rule-1"},
-                "state": "Completed",
-            },
-            "rule-4": {
-                "Condition('test_var|default')": {
-                    "result": "",
-                    "state": "Pending",
-                },
-                "state": "Pending",
-            },
-        }
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": "rule-1",
+                        "prerequisites": [
+                            {
+                                "type": "VariableString",
+                                "variable": "test_var",
+                                "value": "rule-1",
+                            },
+                            {
+                                "type": "Condition",
+                                "condition": "test_var",
+                                "result": "rule-1",
+                            },
+                        ],
+                        "state": "Completed",
+                    },
+                    {
+                        "rule": "rule-2",
+                        "prerequisites": [
+                            {
+                                "type": "Rule",
+                                "rule": "rule-1",
+                            },
+                            {
+                                "type": "Condition",
+                                "condition": "test_var",
+                                "result": "rule-1",
+                            },
+                        ],
+                        "state": "Completed",
+                    },
+                    {
+                        "rule": "rule-3",
+                        "prerequisites": [
+                            {
+                                "type": "VariableString",
+                                "variable": "test_var",
+                                "value": "rule-2",
+                            },
+                            {
+                                "type": "Rule",
+                                "rule": "rule-1",
+                            },
+                            {
+                                "type": "Condition",
+                                "condition": "test_var",
+                                "result": "rule-1",
+                            },
+                        ],
+                        "state": "Completed",
+                    },
+                    {
+                        "rule": "rule-4",
+                        "prerequisites": [
+                            {
+                                "type": "Condition",
+                                "condition": "test_var|default",
+                                "result": "",
+                                "state": "Pending",
+                            },
+                        ],
+                        "state": "Pending",
+                    },
+                ],
+            }
+        ],
     }

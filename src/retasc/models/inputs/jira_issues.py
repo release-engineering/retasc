@@ -32,5 +32,5 @@ class JiraIssues(InputBase):
                 "jira_label_suffix": f"--jira-{issue['key']}",
             }
 
-    def section_name(self, values: dict) -> str:
-        return f"JiraIssues({values['jira_issue']['key']!r})"
+    def report_vars(self, values: dict) -> dict:
+        return {"jira_issue": values["jira_issue"]["key"]}

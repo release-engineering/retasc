@@ -18,6 +18,6 @@ class InputBase(BaseModel):
         """Yield input dicts"""
         raise NotImplementedError()
 
-    def section_name(self, values: dict) -> str:
-        """Section name for given values."""
+    def report_vars(self, values: dict) -> dict:
+        """Variables to show in the final report."""
         raise NotImplementedError()
