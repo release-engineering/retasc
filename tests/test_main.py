@@ -52,55 +52,59 @@ def test_run(arg, issue_key, capsys):
     run_main(arg)
     stdout, stderr = capsys.readouterr()
     assert stderr == ""
-    expected_lines = [
-        "ProductPagesReleases('rhel-10.0')",
-        "  Rule('Example Rule')",
-        "    Condition('major >= 10')",
-        "      result: True",
-        "    Schedule('GA for rhel {{ major }}.{{ minor }}')",
-        "      schedule_task: GA for rhel 10.0",
-        "    TargetDate('start_date - 7|days')",
-        "      target_date: 1989-12-25",
-        "    Rule('Dependent Rule 1')",
-        "      Schedule('TASK')",
-        "      TargetDate('start_date - 3|weeks')",
-        "        target_date: 1989-12-13",
-        "    Rule('Dependent Rule 2')",
-        "      Schedule('TASK')",
-        "      TargetDate('start_date - 2|weeks')",
-        "        target_date: 1989-12-20",
-        "    JiraIssue('main')",
-        '      create: {"project": {"key": "TEST"}, "summary": "Main Issue", "description": "Rule:examples/rules/rules.yaml Template:examples/jira/main.yaml.j2", "labels": ["retasc-id-main-rhel-10.0"]}',
-        f"      issue_id: {issue_key}-1",
-        "      Subtask('add_beta_repos')",
-        '        create: {"project": {"key": "TEST"}, "summary": "Add Beta Repos", "labels": ["retasc-id-add_beta_repos-rhel-10.0"]}',
-        f"        issue_id: {issue_key}-2",
-        "      Subtask('notify_team')",
-        '        create: {"project": {"key": "TEAM-RHEL"}, "summary": "Notify Team", "labels": ["notify-rhel-10.0", "retasc-id-notify_team-rhel-10.0"], "customfield_123": null}',
-        f"        issue_id: {issue_key}-3",
-        "      state: InProgress",
-        "    JiraIssue('secondary')",
-        '      create: {"project": {"key": "TEST"}, "summary": "Secondary Issue", "labels": ["retasc-id-secondary-rhel-10.0"]}',
-        f"      issue_id: {issue_key}-4",
-        "      state: InProgress",
-        "    TargetDate('end_date - 1|days')",
-        "      target_date: 1990-01-03",
-        "    JiraIssue('secondary')",
-        '      create: {"labels": ["test", "retasc-id-secondary-rhel-10.0"]}',
-        f"      issue_id: {issue_key}-5",
-        "      state: InProgress",
-        "    state: InProgress",
-        "  Rule('Dependent Rule 1')",
-        "    state: Completed",
-        "  Rule('Dependent Rule 2')",
-        "    state: Completed",
-    ]
+
+    expected_lines = dedent("""
+      ProductPagesReleases('rhel-10.0')
+        Rule('Example Rule')
+          Condition('major >= 10')
+            result: True
+          Schedule('GA for rhel {{ major }}.{{ minor }}')
+            schedule_task: GA for rhel 10.0
+          TargetDate('start_date - 7|days')
+            target_date: 1989-12-25
+          Rule('Dependent Rule 1')
+            Schedule('TASK')
+            TargetDate('start_date - 3|weeks')
+              target_date: 1989-12-13
+          Rule('Dependent Rule 2')
+            Schedule('TASK')
+            TargetDate('start_date - 2|weeks')
+              target_date: 1989-12-20
+          JiraIssue('main')
+            issue_status: created
+            issue_id: TEST-1
+            Subtask('add_beta_repos')
+              issue_status: created
+              issue_id: TEST-2
+            Subtask('notify_team')
+              issue_status: created
+              issue_id: TEST-3
+            state: InProgress
+          JiraIssue('secondary')
+            issue_status: created
+            issue_id: TEST-4
+            state: InProgress
+          TargetDate('end_date - 1|days')
+            target_date: 1990-01-03
+          JiraIssue('secondary')
+            issue_status: created
+            issue_id: TEST-5
+            state: InProgress
+          state: InProgress
+        Rule('Dependent Rule 1')
+          state: Completed
+        Rule('Dependent Rule 2')
+          state: Completed
+    """).strip()
+    expected_lines = expected_lines.replace("TEST-", f"{issue_key}-").split("\n")
+
     actual_lines = [
         line
         for line in stdout.split("\n")
         if line.startswith(" ") or line.startswith("ProductPagesReleases")
     ]
-    assert expected_lines == actual_lines
+
+    assert expected_lines == actual_lines, stdout
 
 
 @mark.parametrize("arg", ("run", "dry-run"))
@@ -248,19 +252,22 @@ def test_report_output_file(tmp_path):
         {
             "type": "JiraIssue",
             "jira_issue": "main",
-            "create": ANY,
+            "issue_data": ANY,
+            "issue_status": "created",
             "issue_id": "DRYRUN-1",
             "subtasks": [
                 {
                     "type": "Subtask",
                     "jira_issue": "add_beta_repos",
-                    "create": ANY,
+                    "issue_data": ANY,
+                    "issue_status": "created",
                     "issue_id": "DRYRUN-2",
                 },
                 {
                     "type": "Subtask",
                     "jira_issue": "notify_team",
-                    "create": ANY,
+                    "issue_data": ANY,
+                    "issue_status": "created",
                     "issue_id": "DRYRUN-3",
                 },
             ],
@@ -269,7 +276,8 @@ def test_report_output_file(tmp_path):
         {
             "type": "JiraIssue",
             "jira_issue": "secondary",
-            "create": ANY,
+            "issue_data": ANY,
+            "issue_status": "created",
             "issue_id": "DRYRUN-4",
             "state": "InProgress",
         },
@@ -281,7 +289,8 @@ def test_report_output_file(tmp_path):
         {
             "type": "JiraIssue",
             "jira_issue": "secondary",
-            "create": ANY,
+            "issue_data": ANY,
+            "issue_status": "created",
             "issue_id": "DRYRUN-5",
             "state": "InProgress",
         },

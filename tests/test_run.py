@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-import json
 from datetime import UTC, date, datetime
 from textwrap import dedent
 from unittest.mock import ANY, Mock, call, patch
@@ -156,7 +155,13 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
                             {
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
-                                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
+                                "issue_data": {
+                                    "summary": "test",
+                                    "labels": [
+                                        "retasc-id-test_jira_template_1-rhel-10.0"
+                                    ],
+                                },
+                                "issue_status": "created",
                                 "issue_id": "TEST-1",
                                 "state": "InProgress",
                             }
@@ -222,7 +227,11 @@ def test_run_rule_jira_search_once_per_prerequisite(factory, mock_jira, mock_pp)
                             {
                                 "type": "JiraIssue",
                                 "jira_issue": "test",
-                                "create": f'{{"summary": "test", "labels": ["retasc-id-test-{release}"]}}',
+                                "issue_data": {
+                                    "summary": "test",
+                                    "labels": [f"retasc-id-test-{release}"],
+                                },
+                                "issue_status": "created",
                                 "issue_id": ANY,
                                 "state": "InProgress",
                             }
@@ -316,20 +325,40 @@ def test_run_rule_jira_issue_create_subtasks(factory):
                             {
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_3",
-                                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_3-rhel-10.0"]}',
+                                "issue_data": {
+                                    "summary": "test",
+                                    "labels": [
+                                        "retasc-id-test_jira_template_3-rhel-10.0"
+                                    ],
+                                },
+                                "issue_status": "created",
                                 "issue_id": "TEST-1",
                                 "state": "InProgress",
                                 "subtasks": [
                                     {
                                         "type": "Subtask",
                                         "jira_issue": "test_jira_template_1",
-                                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
+                                        "issue_data": {
+                                            "summary": "test",
+                                            "labels": [
+                                                "retasc-id-test_jira_template_1-rhel-10.0"
+                                            ],
+                                            "parent": {"key": "TEST-1"},
+                                        },
+                                        "issue_status": "created",
                                         "issue_id": "TEST-2",
                                     },
                                     {
                                         "type": "Subtask",
                                         "jira_issue": "test_jira_template_2",
-                                        "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
+                                        "issue_data": {
+                                            "summary": "test",
+                                            "labels": [
+                                                "retasc-id-test_jira_template_2-rhel-10.0"
+                                            ],
+                                            "parent": {"key": "TEST-1"},
+                                        },
+                                        "issue_status": "created",
                                         "issue_id": "TEST-3",
                                     },
                                 ],
@@ -379,6 +408,7 @@ def test_run_rule_jira_issue_in_progress(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
+                                "issue_data": ANY,
                                 "state": "InProgress",
                             }
                         ],
@@ -466,7 +496,9 @@ def test_run_rule_jira_issue_in_progress_update(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
-                                "update": '{"summary": "test"}',
+                                "issue_data": ANY,
+                                "issue_status": "updated",
+                                "update": {"summary": "test"},
                                 "state": "InProgress",
                             }
                         ],
@@ -519,7 +551,9 @@ def test_run_rule_jira_issue_update_labels(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
-                                "update": json.dumps({"labels": expected_labels}),
+                                "issue_data": ANY,
+                                "issue_status": "updated",
+                                "update": {"labels": expected_labels},
                                 "state": "InProgress",
                             }
                         ],
@@ -549,7 +583,7 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
             },
         }
     ]
-    expected_fields = {"assignee": {"key": "alice"}}
+    expected_update = {"assignee": {"key": "alice"}}
     report = call_run(additional_jira_fields={"assignee": "assignee"})
     assert report.data == {
         "inputs": [
@@ -564,7 +598,9 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
-                                "update": json.dumps(expected_fields),
+                                "issue_data": ANY,
+                                "issue_status": "updated",
+                                "update": expected_update,
                                 "state": "InProgress",
                             }
                         ],
@@ -575,7 +611,7 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
         ]
     }
     mock_jira.create_issue.assert_not_called()
-    mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_fields)
+    mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_update)
 
     current_value["key"] = "alice"
     current_value["name"] = "Alice"
@@ -593,6 +629,7 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
+                                "issue_data": ANY,
                                 "state": "InProgress",
                             }
                         ],
@@ -627,7 +664,7 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
             },
         }
     ]
-    expected_fields = {
+    expected_update = {
         "customfield_123": {"value": "gating", "child": {"value": "waiverdb"}}
     }
     additional_jira_fields = {"service": "customfield_123"}
@@ -645,7 +682,9 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
-                                "update": json.dumps(expected_fields),
+                                "issue_data": ANY,
+                                "issue_status": "updated",
+                                "update": expected_update,
                                 "state": "InProgress",
                             }
                         ],
@@ -656,7 +695,7 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
         ]
     }
     mock_jira.create_issue.assert_not_called()
-    mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_fields)
+    mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_update)
 
     mock_jira.search_issues.return_value = [
         {
@@ -685,6 +724,7 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
+                                "issue_data": ANY,
                                 "state": "InProgress",
                             }
                         ],
@@ -724,6 +764,7 @@ def test_run_rule_jira_issue_completed(factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
+                                "issue_data": ANY,
                             }
                         ],
                         "state": "Completed",
@@ -755,7 +796,11 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
             {
                 "type": "JiraIssue",
                 "jira_issue": "test_jira_template_1",
-                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
+                "issue_data": {
+                    "summary": "test",
+                    "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
+                },
+                "issue_status": "created",
                 "issue_id": "TEST-1",
                 "state": "InProgress",
             }
@@ -1107,7 +1152,13 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                             {
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
-                                "create": '{"summary": "test", "labels": ["retasc-id-test_jira_template_1-rhel-10.0"]}',
+                                "issue_data": {
+                                    "summary": "test",
+                                    "labels": [
+                                        "retasc-id-test_jira_template_1-rhel-10.0"
+                                    ],
+                                },
+                                "issue_status": "created",
                                 "issue_id": "TEST-1",
                                 "state": "InProgress",
                             }
@@ -1125,7 +1176,14 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                             {
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_2",
-                                "create": '{"summary": "depends on TEST-1", "description": "dependency is In Progress", "labels": ["retasc-id-test_jira_template_2-rhel-10.0"]}',
+                                "issue_data": {
+                                    "summary": "depends on TEST-1",
+                                    "description": "dependency is In Progress",
+                                    "labels": [
+                                        "retasc-id-test_jira_template_2-rhel-10.0"
+                                    ],
+                                },
+                                "issue_status": "created",
                                 "issue_id": "TEST-2",
                                 "state": "InProgress",
                             },
@@ -1176,6 +1234,7 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                             {
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_1",
+                                "issue_data": ANY,
                                 "issue_id": "TEST-1",
                             }
                         ],
@@ -1192,7 +1251,9 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
                                 "type": "JiraIssue",
                                 "jira_issue": "test_jira_template_2",
                                 "issue_id": "TEST-2",
-                                "update": '{"description": "dependency is Completed"}',
+                                "issue_data": ANY,
+                                "issue_status": "updated",
+                                "update": {"description": "dependency is Completed"},
                                 "state": "InProgress",
                             },
                         ],

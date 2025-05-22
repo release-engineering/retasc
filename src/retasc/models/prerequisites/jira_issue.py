@@ -68,7 +68,8 @@ def _edit_issue(
     if not to_update:
         return
 
-    context.report.set("update", json.dumps(to_update))
+    context.report.current_data["update"] = to_update
+    context.report.set("issue_status", "updated")
     _set_parent_issue(to_update, parent_issue_key)
     context.jira.edit_issue(issue["key"], to_update)
 
@@ -76,13 +77,16 @@ def _edit_issue(
 def _report_jira_issue(issue: dict, jira_issue_id: str, context):
     context.report.jira_issues[jira_issue_id] = issue
     context.report.set("issue_id", issue["key"])
+    context.report.current_data["issue_data"] = {
+        k: v for k, v in issue["fields"].items() if v is not None
+    }
 
 
 def _create_issue(
     fields, context, label: str, parent_issue_key: str | None = None
 ) -> dict:
     fields.setdefault("labels", []).append(label)
-    context.report.set("create", json.dumps(fields))
+    context.report.set("issue_status", "created")
     _set_parent_issue(fields, parent_issue_key)
     return context.jira.create_issue(fields)
 
