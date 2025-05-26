@@ -52,10 +52,10 @@ def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
     for input, values, rules in input_rules:
         context.rule_template_params = {}
         section = type(input).__name__
-        vars = input.report_vars(values)
-        name = " ".join(str(x) for x in vars.values())
+        report_vars = input.report_vars(values)
+        name = " ".join(str(x) for x in report_vars.values())
         with context.report.section("inputs", type=section, name=name):
-            context.report.current_data.update(vars)
+            context.report.current_data.update(report_vars)
             yield values, rules
 
 
