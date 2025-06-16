@@ -23,7 +23,7 @@
     - jira_issue: secondary
       template: "secondary.yaml.j2"
 
-    - target_date: "end_date - 1|days"
+    - target_date: "end_date - 1|day"
     - jira_issue: secondary
       fields:
         labels:

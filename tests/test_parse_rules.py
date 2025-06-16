@@ -46,7 +46,7 @@ DEPENDENT_RULES_DATA = [
         "name": "Dependent Rule 2",
         "prerequisites": [
             {"schedule_task": "TASK"},
-            {"condition": "today >= start_date - 1|weeks"},
+            {"condition": "today >= start_date - 1|week"},
         ],
     },
 ]

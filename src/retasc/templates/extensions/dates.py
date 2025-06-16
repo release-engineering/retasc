@@ -28,6 +28,8 @@ GLOBALS = {
 FILTERS = {
     "days": days,
     "weeks": weeks,
+    "day": days,
+    "week": weeks,
 }
 
 

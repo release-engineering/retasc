@@ -84,7 +84,7 @@ def test_run(arg, issue_key, capsys):
             issue_status: created
             issue_id: TEST-4
             state: InProgress
-          TargetDate('end_date - 1|days')
+          TargetDate('end_date - 1|day')
             target_date: 1990-01-03
           JiraIssue('secondary')
             issue_status: created
@@ -283,7 +283,7 @@ def test_report_output_file(tmp_path):
         },
         {
             "type": "TargetDate",
-            "target_date_expr": "end_date - 1|days",
+            "target_date_expr": "end_date - 1|day",
             "target_date": "1990-01-03",
         },
         {
