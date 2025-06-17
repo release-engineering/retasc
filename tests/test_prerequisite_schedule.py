@@ -8,6 +8,7 @@ from pytest import fixture, raises
 
 from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.prerequisites.schedule import PrerequisiteSchedule
+from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.product_pages_api import ProductPagesScheduleTask
 from retasc.templates.template_manager import TemplateManager
 
@@ -40,6 +41,18 @@ def test_prerequisite_schedule_nonunique_task_for_regexp(mock_context):
     )
     with raises(PrerequisiteUpdateStateError, match=expected_error):
         prereq.update_state(mock_context)
+
+
+def test_prerequisite_schedule_missing_task(mock_context):
+    prereq = PrerequisiteSchedule(schedule_task="test3")
+    expected_error = "Failed to find schedule task with name 'test3'"
+    with raises(PrerequisiteUpdateStateError, match=expected_error):
+        prereq.update_state(mock_context)
+
+
+def test_prerequisite_schedule_missing_task_skip(mock_context):
+    prereq = PrerequisiteSchedule(schedule_task="test3", skip_if_missing=True)
+    assert prereq.update_state(mock_context) == ReleaseRuleState.Pending
 
 
 def test_prerequisite_schedule_invalid_regex(mock_context):
