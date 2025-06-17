@@ -13,8 +13,10 @@ def yaml_str_representer(dumper, data):
 @cache
 def yaml() -> YAML:
     yaml = YAML(typ="safe")
-    yaml.indent(sequence=4, offset=2)
     yaml.default_flow_style = False
+    yaml.map_indent = 2
+    yaml.sequence_indent = 4
+    yaml.sequence_dash_offset = 2
     yaml.sort_base_mapping_type_on_output = False
     yaml.representer.add_representer(str, yaml_str_representer)
     return yaml
