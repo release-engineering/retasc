@@ -45,10 +45,10 @@ class PrerequisiteSchedule(PrerequisiteBase):
 
     If schedule does not contain any tasks yet, the state would be Pending.
 
-    If schedule contains tasks, a unique matching schedule must exist,
-    otherwise an error is raised.
+    If schedule contains tasks and skip_if_missing is False, a unique matching
+    schedule must exist, otherwise an error is raised.
 
-    The prerequisite state is always Completed.
+    The prerequisite state is Completed if the schedule task is found.
 
     Adds the following template parameters:
     - schedule - dict with all schedules for the current release
@@ -72,6 +72,13 @@ class PrerequisiteSchedule(PrerequisiteBase):
             - "{{ '/Setup release config.*/' if major > 2 else 'New Release Config' }}"
         """).strip()
     )
+    skip_if_missing: bool = Field(
+        default=False,
+        description=dedent("""
+            If True, the prerequisite will not raise an error if the schedule
+            task is not found, but will set the state to Pending instead.
+        """).strip(),
+    )
 
     def _params(self, schedule: list, context) -> dict:
         local_params = {"schedule": schedule}
@@ -83,6 +90,8 @@ class PrerequisiteSchedule(PrerequisiteBase):
             tasks = [task for task in schedule if task.name == schedule_task]
 
         if not tasks:
+            if self.skip_if_missing:
+                return {}
             raise PrerequisiteUpdateStateError(
                 f"Failed to find schedule task with name {schedule_task!r}"
             )
@@ -125,6 +134,9 @@ class PrerequisiteSchedule(PrerequisiteBase):
             return ReleaseRuleState.Pending
 
         local_params = self._params(schedule, context)
+        if not local_params:
+            return ReleaseRuleState.Pending
+
         context.report.set("schedule_task", local_params["schedule_task"])
         context.template.params.update(local_params)
         return ReleaseRuleState.Completed
