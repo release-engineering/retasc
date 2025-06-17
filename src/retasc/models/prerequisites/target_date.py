@@ -30,7 +30,7 @@ class PrerequisiteTargetDate(PrerequisiteBase):
             Expression that evaluates to a target date indicating the earliest
             possible start. Examples:
             - "start_date - 3|weeks"
-            - "end_date + 1|days"
+            - "end_date + 1|day"
             - "today"
         """).strip(),
     )

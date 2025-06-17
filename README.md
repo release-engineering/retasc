@@ -123,8 +123,11 @@ Template variables:
 - `jira_template_file` - Jira issue template path, available only in Jira
   template prerequisites
 
-There are also `days` and `weeks` filters for creating Python `timedelta`
-objects for date manipulation. For example: `today + 1|days`
+There are also `days`, `day`, `weeks` and `week` filters for creating Python
+`timedelta` objects for date manipulation. For example: `today + 1|day` or
+`today + 2|days`, `start_date +2|weeks`. Note: Singular and plural versions
+work the same and take any integer as an argument. So both `2|day` and `1|days`
+would work.
 
 ## Environment Variables
 
