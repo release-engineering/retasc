@@ -5,6 +5,7 @@ from copy import deepcopy
 import jinja2.exceptions
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
+from requests.exceptions import HTTPError
 
 from retasc.models.inputs import Input
 from retasc.models.inputs.product_pages_releases import ProductPagesReleases
@@ -73,6 +74,7 @@ class Rule(BaseModel):
                 try:
                     state = prereq.update_state(context)
                 except (
+                    HTTPError,
                     PrerequisiteUpdateStateError,
                     jinja2.exceptions.TemplateError,
                 ) as e:
