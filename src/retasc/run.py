@@ -88,6 +88,7 @@ def run_helper(
         report=report,
         config=config,
     )
+    context.template.env.globals["retasc_context"] = context
 
     for input, rules in iterate_rules(context):
         for rule in rules:
