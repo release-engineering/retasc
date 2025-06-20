@@ -134,8 +134,8 @@ would work.
 Custom extensions can be added to the templating engine to support additional
 variables, filters and functions.
 
-To add custom extensions, add paths with the `RETASC_TEMPLATE_EXTENSION_PATH`
-environment variable to a Python file or a directory with the extensions.
+To add custom extensions, add paths to the `template_extensions` configuration
+file. Each path must point to a Python file or a directory with the extensions.
 
 The extension is a Python file that includes the `update_environment` function
 that takes the `jinja2.Environment` as an argument. For example:
@@ -154,8 +154,6 @@ container image:
 
 - `RETASC_CONFIG` - Path to the main configuration file
 - `RETASC_JIRA_TOKEN` - Jira access token
-- `RETASC_TEMPLATE_EXTENSION_PATH` - List of paths to extensions for templating
-  engine; separator is `:` on Linux and macOS, `;` on Windows
 - `RETASC_LOGGING_CONFIG` - Path to JSON file with the logging configuration;
   see details in [Configuration dictionary
   schema](https://docs.python.org/3/library/logging.config.html#logging-config-dictschema)

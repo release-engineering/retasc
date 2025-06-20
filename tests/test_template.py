@@ -14,11 +14,13 @@ def fixtures():
 
 
 @mark.parametrize("extension_path", (".", "dunder.py"))
-def test_template_extensions(fixtures, monkeypatch, extension_path):
+def test_template_extensions(fixtures, extension_path):
     template_search_path = fixtures / "templates"
-    template_extensions_path = fixtures / "template_extensions" / extension_path
-    monkeypatch.setenv("RETASC_TEMPLATE_EXTENSION_PATH", template_extensions_path)
-    manager = TemplateManager(template_search_path=template_search_path)
+    template_extensions = fixtures / "template_extensions" / extension_path
+    manager = TemplateManager(
+        template_search_path=template_search_path,
+        template_extensions=[template_extensions],
+    )
     txt_file = template_search_path / "test.yml.j2"
     template = txt_file.read_text()
     result = manager.render(template, test_variable="test")
@@ -30,15 +32,17 @@ def test_template_extensions(fixtures, monkeypatch, extension_path):
     assert result == expected
 
 
-def test_template_extensions_missing_function(fixtures, monkeypatch):
+def test_template_extensions_missing_function(fixtures):
     template_search_path = fixtures / "templates"
-    monkeypatch.setenv("RETASC_TEMPLATE_EXTENSION_PATH", __file__)
     expected = re.escape(
         "module 'retasc.templates.extensions.ext1.test_template'"
         " has no attribute 'update_environment'"
     )
     with raises(AttributeError, match=expected):
-        TemplateManager(template_search_path=template_search_path)
+        TemplateManager(
+            template_search_path=template_search_path,
+            template_extensions=[Path(__file__)],
+        )
 
 
 @mark.parametrize(
@@ -48,10 +52,12 @@ def test_template_extensions_missing_function(fixtures, monkeypatch):
         "importlib.util.module_from_spec",
     ),
 )
-def test_template_extensions_missing_file(fixtures, monkeypatch, mock_fn):
+def test_template_extensions_missing_file(fixtures, mock_fn):
     template_search_path = fixtures / "templates"
-    monkeypatch.setenv("RETASC_TEMPLATE_EXTENSION_PATH", __file__)
     expected = re.escape(f"Could not load extensions from {__file__}")
     with patch(mock_fn, return_value=None):
         with raises(RuntimeError, match=expected):
-            TemplateManager(template_search_path=template_search_path)
+            TemplateManager(
+                template_search_path=template_search_path,
+                template_extensions=[Path(__file__)],
+            )

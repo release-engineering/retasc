@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from functools import cached_property
 from pathlib import Path
+from textwrap import dedent
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +12,13 @@ class Config(BaseModel):
     rules_path: str = Field(description="Path to rules (processed recursively)")
     jira_template_path: Path = Field(
         description="Path to a root directory with Jira templates"
+    )
+    template_extensions: list[Path] = Field(
+        description=dedent("""
+            List of paths to extensions for templating engine". Each path must
+            point to a valid Python file or a directory with the extensions.
+        """).strip(),
+        default_factory=list,
     )
     product_pages_url: str = Field(description="Product Pages URL")
     jira_url: str = Field(description="Jira URL")
