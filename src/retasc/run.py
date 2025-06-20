@@ -77,7 +77,10 @@ def run_helper(
     jira = jira_cls(api_url=config.jira_url, token=jira_token, session=jira_session)
     pp = ProductPagesApi(config.product_pages_url, session=session)
     rules = parse_rules(config.rules_path, config=config)
-    template = TemplateManager(config.jira_template_path)
+    template = TemplateManager(
+        template_search_path=config.jira_template_path,
+        template_extensions=config.template_extensions,
+    )
     report = Report()
     context = RuntimeContext(
         session=session,
