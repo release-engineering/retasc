@@ -5,7 +5,7 @@ from typing import Any
 
 import jinja2
 
-from .extensions import update_environment
+from .extensions import update_environment, update_environment_in_paths
 
 type TemplateParams = dict[str, Any]
 
@@ -13,6 +13,7 @@ type TemplateParams = dict[str, Any]
 @dataclass
 class TemplateManager:
     template_search_path: Path
+    template_extensions: list[Path] = field(default_factory=list)
     params: TemplateParams = field(default_factory=dict)
 
     def __post_init__(self):
@@ -25,6 +26,7 @@ class TemplateManager:
             ),
         )
         update_environment(self.env)
+        update_environment_in_paths(self.template_extensions, self.env)
 
     def render(self, template_text: str, **kwargs) -> str:
         """Render a template text with params"""

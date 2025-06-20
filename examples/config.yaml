@@ -1,5 +1,7 @@
 rules_path: examples/rules
 jira_template_path: examples/jira
+template_extensions:
+  - tests/fixtures/template_extensions
 product_pages_url: https://pp.example.com
 jira_url: https://jira.example.com
 jira_fields: {}

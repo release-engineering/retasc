@@ -2,7 +2,6 @@
 import importlib
 import importlib.util
 import logging
-import os
 import pkgutil
 from pathlib import Path
 
@@ -30,15 +29,17 @@ class TemplateExtensionLoader:
 
 def update_environment(env: Environment):
     """
-    Call update_environment(env) in sub-modules and paths in
-    RETASC_TEMPLATE_EXTENSION_PATH environment variable.
+    Call update_environment(env) for built-in extensions sub-modules.
     """
     for module_info in pkgutil.walk_packages(path=__path__, prefix=f"{__name__}."):
         module = importlib.import_module(module_info.name)
         module.update_environment(env)
 
-    path_list = os.environ.get("RETASC_TEMPLATE_EXTENSION_PATH", "")
-    paths = [Path(path) for path in path_list.split(os.pathsep)]
+
+def update_environment_in_paths(paths: list[Path], env: Environment):
+    """
+    Call update_environment(env) in sub-modules and directories.
+    """
     loader = TemplateExtensionLoader()
     for path in paths:
         if path.is_dir():
