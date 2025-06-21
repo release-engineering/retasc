@@ -48,6 +48,6 @@ repos:
 
   # renovate.json validator
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 40.61.3
+    rev: 41.1.3
     hooks:
       - id: renovate-config-validator
