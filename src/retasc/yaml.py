@@ -12,7 +12,7 @@ def yaml_str_representer(dumper, data):
 
 @cache
 def yaml() -> YAML:
-    yaml = YAML(typ="safe")
+    yaml = YAML(typ="safe", pure=True)
     yaml.default_flow_style = False
     yaml.map_indent = 2
     yaml.sequence_indent = 4
