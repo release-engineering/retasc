@@ -33,9 +33,19 @@ class ProductPagesReleases(InputBase):
     """
 
     product: str = Field(description="Product short name in Product Pages")
+    min_phase: str = Field(
+        default="Concept",
+        description="Minimum phase (inclusive) for filtering releases. Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported",
+    )
+    max_phase: str = Field(
+        default="Unsupported",
+        description="Maximum phase (inclusive) for filtering releases. Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported",
+    )
 
     def values(self, context) -> Iterator[dict]:
-        releases = context.pp.active_releases(self.product)
+        releases = context.pp.active_releases(
+            self.product, min_phase=self.min_phase, max_phase=self.max_phase
+        )
         for release in releases:
             major, minor = parse_version(release)
             data = {

@@ -22,6 +22,23 @@ def test_active_releases(pp_api, requests_mock):
 
     req = requests_mock.request_history[0]
     assert req.qs.get("product__shortname") == ["example_product"]
+    # Check that default phase parameters are used
+    assert req.qs.get("phase__gte") == ["concept"]
+    assert req.qs.get("phase__lte") == ["unsupported"]
+
+
+def test_active_releases_with_custom_phases(pp_api, requests_mock):
+    releases = [{"shortname": "example-1"}]
+    requests_mock.get(f"{PP_URL}/releases/", json=releases)
+    resp = pp_api.active_releases(
+        "example_product", min_phase="Planning", max_phase="Launch"
+    )
+    assert resp == ["example-1"]
+
+    req = requests_mock.request_history[0]
+    assert req.qs.get("product__shortname") == ["example_product"]
+    assert req.qs.get("phase__gte") == ["planning"]
+    assert req.qs.get("phase__lte") == ["launch"]
 
 
 def test_release_schedules(pp_api, requests_mock):
