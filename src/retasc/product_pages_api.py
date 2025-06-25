@@ -32,12 +32,24 @@ class ProductPagesApi:
 
     @cache
     @tracer.start_as_current_span("ProductPagesApi.active_releases")
-    def active_releases(self, product_shortname: str) -> list[str]:
-        """Gets list of active release names."""
+    def active_releases(
+        self,
+        product_shortname: str,
+        min_phase: str = "Concept",
+        max_phase: str = "Unsupported",
+    ) -> list[str]:
+        """
+        Gets list of active release names within the specified phase range.
+
+        :param product_shortname: Product short name
+        :param min_phase: Minimum phase (inclusive)
+        :param max_phase: Maximum phase (inclusive)
+        :return: List of release short names
+        """
         opt = {
             "product__shortname": product_shortname,
-            "phase__gt": "Concept",
-            "phase__lt": "Unsupported",
+            "phase__gte": min_phase,
+            "phase__lte": max_phase,
             "fields": "shortname",
         }
         url = f"{self.api_url}/releases/"
