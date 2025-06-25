@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import re
 from collections.abc import Iterator
-from textwrap import dedent
 
 from pydantic import Field
 
 from retasc.models.inputs.base import InputBase
+from retasc.product_pages_api import Phase
 
 RE_VERSION = re.compile(r"^\w+-(?P<major>\d+)(?:[-.](?P<minor>\d+))?")
 
@@ -34,19 +34,13 @@ class ProductPagesReleases(InputBase):
     """
 
     product: str = Field(description="Product short name in Product Pages")
-    min_phase: str = Field(
-        default="Planning",
-        description=dedent("""
-            Minimum phase (inclusive) for filtering releases.
-            Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported
-        """),
+    min_phase: Phase = Field(
+        default=Phase.PLANNING,
+        description="Minimum phase (inclusive) for filtering releases",
     )
-    max_phase: str = Field(
-        default="Maintenance",
-        description=dedent("""
-            Maximum phase (inclusive) for filtering releases.
-            Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported
-        """),
+    max_phase: Phase = Field(
+        default=Phase.MAINTENANCE,
+        description="Maximum phase (inclusive) for filtering releases",
     )
 
     def values(self, context) -> Iterator[dict]:

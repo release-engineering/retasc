@@ -5,12 +5,29 @@ Production Pages API
 
 from dataclasses import dataclass
 from datetime import date
+from enum import Enum
 from functools import cache
 
 from opentelemetry import trace
 from requests import Session
 
 tracer = trace.get_tracer(__name__)
+
+
+class Phase(str, Enum):
+    """Available Product Pages release phases."""
+
+    CONCEPT = "Concept"
+    PLANNING = "Planning"
+    PLANNING_DEVELOPMENT_TESTING = "Planning / Development / Testing"
+    CI_CD = "CI / CD"
+    DEVELOPMENT = "Development"
+    DEVELOPMENT_TESTING = "Development / Testing"
+    TESTING = "Testing"
+    EXCEPTION = "Exception"
+    LAUNCH = "Launch"
+    MAINTENANCE = "Maintenance"
+    UNSUPPORTED = "Unsupported"
 
 
 @dataclass
@@ -35,8 +52,8 @@ class ProductPagesApi:
     def active_releases(
         self,
         product_shortname: str,
-        min_phase: str,
-        max_phase: str,
+        min_phase: Phase,
+        max_phase: Phase,
     ) -> list[str]:
         """
         Gets list of active release names within the specified phase range.
@@ -48,8 +65,8 @@ class ProductPagesApi:
         """
         opt = {
             "product__shortname": product_shortname,
-            "phase__gte": min_phase,
-            "phase__lte": max_phase,
+            "phase__gte": min_phase.value,
+            "phase__lte": max_phase.value,
             "fields": "shortname",
         }
         url = f"{self.api_url}/releases/"
