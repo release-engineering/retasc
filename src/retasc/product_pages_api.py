@@ -35,8 +35,8 @@ class ProductPagesApi:
     def active_releases(
         self,
         product_shortname: str,
-        min_phase: str = "Concept",
-        max_phase: str = "Unsupported",
+        min_phase: str,
+        max_phase: str,
     ) -> list[str]:
         """
         Gets list of active release names within the specified phase range.

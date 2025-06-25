@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import re
 from collections.abc import Iterator
+from textwrap import dedent
 
 from pydantic import Field
 
@@ -34,12 +35,18 @@ class ProductPagesReleases(InputBase):
 
     product: str = Field(description="Product short name in Product Pages")
     min_phase: str = Field(
-        default="Concept",
-        description="Minimum phase (inclusive) for filtering releases. Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported",
+        default="Planning",
+        description=dedent("""
+            Minimum phase (inclusive) for filtering releases.
+            Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported
+        """),
     )
     max_phase: str = Field(
-        default="Unsupported",
-        description="Maximum phase (inclusive) for filtering releases. Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported",
+        default="Maintenance",
+        description=dedent("""
+            Maximum phase (inclusive) for filtering releases.
+            Available phases: Concept, Planning, Planning / Development / Testing, CI / CD, Development, Development / Testing, Testing, Exception, Launch, Maintenance, Unsupported
+        """),
     )
 
     def values(self, context) -> Iterator[dict]:
