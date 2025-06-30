@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import re
 from textwrap import dedent
+from typing import Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.release_rule_state import ReleaseRuleState
@@ -11,10 +12,11 @@ from retasc.utils import to_comma_separated
 from .base import PrerequisiteBase
 
 
-def to_regex(re_string: str) -> re.Pattern | None:
+def to_regex(re_string: str) -> re.Pattern:
     """
-    If re_string is enclosed in slashes, return regular expression, otherwise
-    returns None.
+    If re_string is enclosed in slashes, return regular expression with
+    re_string pattern, otherwise returns regular expression matching just the
+    re_string.
 
     Throws an PrerequisiteUpdateStateError if regular expression pattern is
     invalid or the re_string only starts or ends with slash.
@@ -28,7 +30,7 @@ def to_regex(re_string: str) -> re.Pattern | None:
         )
 
     if not slash_start:
-        return None
+        return re.compile(re.escape(re_string))
 
     pattern = re_string[1:-1]
     try:
@@ -53,12 +55,13 @@ class PrerequisiteSchedule(PrerequisiteBase):
     Adds the following template parameters:
     - schedule - dict with all schedules for the current release
     - schedule_task - name of the matching schedule task
+    - schedule_slug - name of the matching schedule task
     - start_date - the schedule task's start_date
     - end_date - the schedule task's end_date
     - schedule_task_is_draft - if schedule task is marked as draft
     """
 
-    schedule_task: str = Field(
+    schedule_task: str | None = Field(
         description=dedent("""
             The name of the Product Pages schedule task or a regular expression
             pattern enclosed in slashes (/) to match a full task name.
@@ -70,7 +73,17 @@ class PrerequisiteSchedule(PrerequisiteBase):
             - "New configuration for RHEL {{ major }}.{{ minor }}"
             - "/Setup release config.*/"
             - "{{ '/Setup release config.*/' if major > 2 else 'New Release Config' }}"
-        """).strip()
+        """).strip(),
+        default=None,
+    )
+    schedule_slug: str | None = Field(
+        description=dedent("""
+            The slug value of the Product Pages schedule task or a regular expression
+            pattern enclosed in slashes (/) to match a full task name.
+
+            This is first evaluated by templating engine.
+        """).strip(),
+        default=None,
     )
     skip_if_missing: bool = Field(
         default=False,
@@ -80,44 +93,58 @@ class PrerequisiteSchedule(PrerequisiteBase):
         """).strip(),
     )
 
-    def _params(self, schedule: list, context) -> dict:
-        local_params = {"schedule": schedule}
-        schedule_task = context.template.render(self.schedule_task, **local_params)
-        schedule_task_re = to_regex(schedule_task)
-        if schedule_task_re:
-            tasks = [task for task in schedule if schedule_task_re.fullmatch(task.name)]
-        else:
-            tasks = [task for task in schedule if task.name == schedule_task]
+    @model_validator(mode="after")
+    def check_task_or_slug_is_set(self) -> Self:
+        if self.schedule_task is None and self.schedule_slug is None:
+            raise ValueError("Either schedule_task or schedule_slug must be set")
+        return self
+
+    def _filter_tasks(
+        self, tasks: list, attribute_to_match: str, query: str | None, context
+    ) -> list:
+        if query is None:
+            return tasks
+
+        pattern = context.template.render(query, schedule=tasks)
+        regex = to_regex(pattern)
+        tasks = [
+            task for task in tasks if regex.fullmatch(getattr(task, attribute_to_match))
+        ]
 
         if not tasks:
             if self.skip_if_missing:
-                return {}
+                return []
             raise PrerequisiteUpdateStateError(
-                f"Failed to find schedule task with name {schedule_task!r}"
+                f"Failed to find schedule task matching {attribute_to_match} {pattern!r}"
             )
 
         if len(tasks) > 1:
-            if schedule_task_re:
-                task_names = to_comma_separated(task.name for task in tasks)
-                raise PrerequisiteUpdateStateError(
-                    f"Found multiple schedule tasks matching {repr(schedule_task)[1:-1]}"
-                    f", matching are: {task_names}"
-                )
-            else:
-                raise PrerequisiteUpdateStateError(
-                    f"Found multiple schedule tasks with name {schedule_task!r}"
-                )
+            task_values = to_comma_separated(
+                getattr(task, attribute_to_match) for task in tasks
+            )
+            raise PrerequisiteUpdateStateError(
+                f"Found multiple schedule tasks matching {attribute_to_match} {pattern!r}"
+                f", matching are: {task_values}"
+            )
+
+        return tasks
+
+    def _params(self, schedule: list, context) -> dict:
+        tasks = schedule
+        tasks = self._filter_tasks(tasks, "name", self.schedule_task, context)
+        tasks = self._filter_tasks(tasks, "slug", self.schedule_slug, context)
+        if not tasks:
+            return {}
 
         task = tasks[0]
-        local_params.update(
-            {
-                "schedule_task": task.name,
-                "start_date": task.start_date,
-                "end_date": task.end_date,
-                "schedule_task_is_draft": task.is_draft,
-            }
-        )
-        return local_params
+        return {
+            "schedule": schedule,
+            "schedule_task": task.name,
+            "schedule_slug": task.slug,
+            "start_date": task.start_date,
+            "end_date": task.end_date,
+            "schedule_task_is_draft": task.is_draft,
+        }
 
     def update_state(self, context) -> ReleaseRuleState:
         """

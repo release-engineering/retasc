@@ -119,7 +119,7 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
         ProductPagesReleases('rhel-10.0')
           Rule('Example Rule')
             Schedule('GA for rhel {{ major }}.{{ minor }}')
-              Failed to find schedule task with name 'GA for rhel 10.0'
+              Failed to find schedule task matching name 'GA for rhel 10.0'
     """).strip()
     run_main(arg, expected_exit_code=expected_error)
     stdout, stderr = capsys.readouterr()
@@ -130,7 +130,7 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
         "    Condition('major >= 10')",
         "      result: True",
         "    Schedule('GA for rhel {{ major }}.{{ minor }}')",
-        "      error: ❌ Failed to find schedule task with name 'GA for rhel 10.0'",
+        "      error: ❌ Failed to find schedule task matching name 'GA for rhel 10.0'",
         "      state: Pending",
         "    state: Pending",
         "  Rule('Dependent Rule 1')",
