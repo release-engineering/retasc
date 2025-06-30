@@ -33,6 +33,7 @@ class Phase(str, Enum):
 @dataclass
 class ProductPagesScheduleTask:
     name: str
+    slug: str
     start_date: date
     end_date: date
     is_draft: bool = False
@@ -94,6 +95,7 @@ class ProductPagesApi:
         return [
             ProductPagesScheduleTask(
                 name=item["name"],
+                slug=item["slug"],
                 start_date=date.fromisoformat(item["date_start"]),
                 end_date=date.fromisoformat(item["date_finish"]),
                 is_draft=item["draft"],

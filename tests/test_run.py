@@ -910,6 +910,7 @@ def test_run_rule_schedule_target_date(target_date, is_draft, result, mock_pp, f
     mock_pp.release_schedules.return_value = [
         ProductPagesScheduleTask(
             name="TASK",
+            slug="task",
             start_date=date(1990, 1, 1),
             end_date=datetime.now(UTC).date(),
             is_draft=is_draft,
@@ -962,6 +963,7 @@ def test_run_rule_schedule_params(condition_expr, result, mock_pp, factory):
     mock_pp.release_schedules.return_value = [
         ProductPagesScheduleTask(
             name="TASK",
+            slug="task",
             start_date=date(1990, 1, 1),
             end_date=date(1990, 1, 3),
         ),

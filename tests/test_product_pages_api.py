@@ -65,18 +65,21 @@ def test_release_schedules(pp_api, requests_mock):
     schedules = [
         {
             "name": "task1",
+            "slug": "rhel.task1",
             "date_start": "2024-10-01",
             "date_finish": "2024-10-02",
             "draft": False,
         },
         {
             "name": "task2",
+            "slug": "rhel.task2",
             "date_start": "2024-11-20",
             "date_finish": "2024-11-21",
             "draft": False,
         },
         {
             "name": "task3",
+            "slug": "rhel.task3",
             "date_start": "2024-11-21",
             "date_finish": "2024-11-22",
             "draft": True,
@@ -90,16 +93,19 @@ def test_release_schedules(pp_api, requests_mock):
     assert resp == [
         ProductPagesScheduleTask(
             name="task1",
+            slug="rhel.task1",
             start_date=date(2024, 10, 1),
             end_date=date(2024, 10, 2),
         ),
         ProductPagesScheduleTask(
             name="task2",
+            slug="rhel.task2",
             start_date=date(2024, 11, 20),
             end_date=date(2024, 11, 21),
         ),
         ProductPagesScheduleTask(
             name="task3",
+            slug="rhel.task3",
             start_date=date(2024, 11, 21),
             end_date=date(2024, 11, 22),
             is_draft=True,

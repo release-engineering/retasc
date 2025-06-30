@@ -84,11 +84,13 @@ def mock_pp():
         mock.release_schedules.return_value = [
             ProductPagesScheduleTask(
                 name="GA for rhel 10.0",
+                slug="rhel10.ga",
                 start_date=date(1990, 1, 1),
                 end_date=date(1990, 1, 2),
             ),
             ProductPagesScheduleTask(
                 name="TASK",
+                slug="task",
                 start_date=date(1990, 1, 3),
                 end_date=date(1990, 1, 4),
             ),

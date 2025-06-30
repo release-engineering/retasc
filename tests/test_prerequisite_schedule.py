@@ -20,15 +20,31 @@ def mock_context():
     context.template.params["release"] = "product-1.0"
     dummy_date = date(2025, 4, 10)
     context.pp.release_schedules.return_value = [
-        ProductPagesScheduleTask(name=name, start_date=dummy_date, end_date=dummy_date)
+        ProductPagesScheduleTask(
+            name=name,
+            slug=f"product.{name}",
+            start_date=dummy_date,
+            end_date=dummy_date,
+        )
         for name in ["test1", "test2", "other", "test2"]
     ]
     yield context
 
 
+def test_prerequisite_schedule_task_or_slug_must_be_set(mock_context):
+    expected = "Either schedule_task or schedule_slug must be set"
+    with raises(ValueError, match=expected):
+        PrerequisiteSchedule()
+
+
+def test_prerequisite_schedule_slug(mock_context):
+    prereq = PrerequisiteSchedule(schedule_slug="product.other")
+    assert prereq.update_state(mock_context) == ReleaseRuleState.Completed
+
+
 def test_prerequisite_schedule_nonunique_task(mock_context):
     prereq = PrerequisiteSchedule(schedule_task="test2")
-    expected_error = "Found multiple schedule tasks with name 'test2'"
+    expected_error = "Found multiple schedule tasks matching name 'test2'"
     with raises(PrerequisiteUpdateStateError, match=expected_error):
         prereq.update_state(mock_context)
 
@@ -36,7 +52,7 @@ def test_prerequisite_schedule_nonunique_task(mock_context):
 def test_prerequisite_schedule_nonunique_task_for_regexp(mock_context):
     prereq = PrerequisiteSchedule(schedule_task="/test.*/")
     expected_error = (
-        "Found multiple schedule tasks matching /test.*/"
+        "Found multiple schedule tasks matching name '/test.*/'"
         ", matching are: 'test1', 'test2', 'test2'"
     )
     with raises(PrerequisiteUpdateStateError, match=expected_error):
@@ -45,7 +61,7 @@ def test_prerequisite_schedule_nonunique_task_for_regexp(mock_context):
 
 def test_prerequisite_schedule_missing_task(mock_context):
     prereq = PrerequisiteSchedule(schedule_task="test3")
-    expected_error = "Failed to find schedule task with name 'test3'"
+    expected_error = "Failed to find schedule task matching name 'test3'"
     with raises(PrerequisiteUpdateStateError, match=expected_error):
         prereq.update_state(mock_context)
 
