@@ -92,6 +92,18 @@ class PrerequisiteSchedule(PrerequisiteBase):
             task is not found, but will set the state to Pending instead.
         """).strip(),
     )
+    merge_multiple: bool = Field(
+        default=False,
+        description=dedent("""
+            If True, the prerequisite will not raise an error if multiple
+            matching schedule tasks are found. Instead it merges them so that
+            template parameters would be:
+            - start_date would be minimal value
+            - end_date would be maximal value
+            - schedule_task_is_draft would be true only if any are true
+            - schedule_task and schedule_slug would list all values
+        """).strip(),
+    )
 
     @model_validator(mode="after")
     def check_task_or_slug_is_set(self) -> Self:
@@ -119,6 +131,8 @@ class PrerequisiteSchedule(PrerequisiteBase):
             )
 
         if len(tasks) > 1:
+            if self.merge_multiple:
+                return tasks
             task_values = to_comma_separated(
                 getattr(task, attribute_to_match) for task in tasks
             )
@@ -135,6 +149,16 @@ class PrerequisiteSchedule(PrerequisiteBase):
         tasks = self._filter_tasks(tasks, "slug", self.schedule_slug, context)
         if not tasks:
             return {}
+
+        if len(tasks) > 1:
+            return {
+                "schedule": schedule,
+                "schedule_task": [task.name for task in tasks],
+                "schedule_slug": [task.slug for task in tasks],
+                "start_date": min(task.start_date for task in tasks),
+                "end_date": max(task.end_date for task in tasks),
+                "schedule_task_is_draft": any(task.is_draft for task in tasks),
+            }
 
         task = tasks[0]
         return {
