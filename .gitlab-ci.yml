@@ -1,6 +1,6 @@
 ---
 stages:
-  - testing
+  - test
   - sonarqube
 
 variables:
@@ -26,7 +26,7 @@ include:
 unittests:
   image:
     name: quay.io/fedora/python-313:latest
-  stage: testing
+  stage: test
   script:
     - pip install tox
     - tox -e py3 -- --junit-xml="${JUNIT_XML}"
