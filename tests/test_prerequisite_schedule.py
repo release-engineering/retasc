@@ -86,3 +86,26 @@ def test_prerequisite_schedule_invalid_regex_input_string(mock_context):
     )
     with raises(PrerequisiteUpdateStateError, match=expected_error):
         prereq.update_state(mock_context)
+
+
+def test_prerequisite_schedule_allow_multiple(mock_context):
+    slugs = [f"product.test_{i}" for i in range(3)]
+    mock_context.pp.release_schedules.return_value.extend(
+        ProductPagesScheduleTask(
+            name="test",
+            slug=slug,
+            start_date=date(2025, 4 + i, 10),
+            end_date=date(2025, 5 + i, 10),
+            is_draft=(i == 2),
+        )
+        for i, slug in enumerate(slugs)
+    )
+    prereq = PrerequisiteSchedule(schedule_task="test", merge_multiple=True)
+    assert prereq.update_state(mock_context) == ReleaseRuleState.Completed
+
+    params = mock_context.template.params
+    assert params["schedule_task"] == ["test"] * 3
+    assert params["schedule_slug"] == slugs
+    assert params["start_date"] == date(2025, 4, 10)
+    assert params["end_date"] == date(2025, 7, 10)
+    assert params["schedule_task_is_draft"] is True
