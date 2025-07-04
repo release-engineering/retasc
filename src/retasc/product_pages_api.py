@@ -88,7 +88,7 @@ class ProductPagesApi:
         """
         url = f"{self.api_url}/releases/{release_short_name}/schedule-tasks"
         res = self.session.get(
-            url, params={"fields": "name,date_start,date_finish,draft"}
+            url, params={"fields": "name,date_start,date_finish,draft,slug"}
         )
         res.raise_for_status()
         data = res.json()
