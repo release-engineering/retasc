@@ -106,6 +106,24 @@ storing any extra information. The label is constructed using
 "jira_label_prefix" configuration, "jira_issue" from the prerequisite and
 "jira_label_suffix" template variable originating from the Product pages input.
 
+### Rule to Create a Jira Issue on a Fixed Date
+
+The following rule will create a Jira 2 weeks before a target date:
+
+```yaml
+name: Enable XYZ Release on 2025.07.17
+inputs:
+  - variables:
+      date: date('2025-07-17')
+prerequisites:
+  - condition: today < date
+  - target_date: date - 2|weeks
+  - jira_issue: enable_xyz_release
+    template: "enable-xyz-release.yml.j2"
+    fields:
+      duedate: "{{ date }}"
+```
+
 ## Templating Engine
 
 Some variable and files are evaluated by Jinja2 templating engine.
