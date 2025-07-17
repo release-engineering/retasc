@@ -52,7 +52,7 @@ class PrerequisiteTargetDate(PrerequisiteBase):
         if days_remaining > 0:
             context.report.set("days_remaining", days_remaining)
 
-        if self.ignore_drafts and context.template.params["schedule_task_is_draft"]:
+        if self.ignore_drafts and context.template.params.get("schedule_task_is_draft"):
             context.report.set("schedule_task_is_draft", True)
             if days_remaining <= 0:
                 raise PrerequisiteUpdateStateError(
