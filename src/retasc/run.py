@@ -33,7 +33,7 @@ def rules_by_input(context: RuntimeContext) -> list[tuple[InputBase, dict, list[
                 input_values_cache[cache_key] = input_values
 
             for values in input_values:
-                key = json.dumps(values)
+                key = json.dumps({k: repr(v) for k, v in values.items()})
                 _, _, rules_for_input = result.setdefault(key, (input, values, []))
                 rules_for_input.append(rule)
 

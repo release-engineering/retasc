@@ -8,6 +8,7 @@ from pytest import fixture, mark
 from retasc.models.config import parse_config
 from retasc.models.inputs.jira_issues import JiraIssues
 from retasc.models.inputs.product_pages_releases import parse_version
+from retasc.models.inputs.variables import Variables
 from retasc.models.prerequisites.condition import PrerequisiteCondition
 from retasc.models.prerequisites.rule import PrerequisiteRule
 from retasc.models.prerequisites.schedule import PrerequisiteSchedule
@@ -1464,4 +1465,32 @@ def test_run_rule_inherit_params(factory):
                 ],
             }
         ],
+    }
+
+
+def test_run_rule_fixed_date(factory):
+    input = Variables(variables={"date": "date('2020-01-01')"})
+    prereq = PrerequisiteTargetDate(target_date="date + 1|day")
+    rule = factory.new_rule(inputs=[input], prerequisites=[prereq])
+    report = call_run()
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "Variables",
+                "variables": {"date": "datetime.date(2020, 1, 1)"},
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "TargetDate",
+                                "target_date": date(2020, 1, 2),
+                                "target_date_expr": "date + 1|day",
+                            }
+                        ],
+                        "state": "Completed",
+                    }
+                ],
+            }
+        ]
     }
