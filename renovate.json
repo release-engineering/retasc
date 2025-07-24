@@ -6,7 +6,9 @@
     "schedule:weekly"
   ],
   "dockerfile": {
-    "fileMatch": ["Containerfile"]
+    "managerFilePatterns": [
+      "/Containerfile/"
+    ]
   },
   "packageRules": [
     {
