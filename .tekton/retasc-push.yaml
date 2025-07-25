@@ -457,7 +457,7 @@ spec:
             # We need Renovate to update references to "*-main" tagged stable images.
             # Renovate treats the text after the first hyphen as a type of platform/compatibility indicator.
             # See: https://docs.renovatebot.com/modules/versioning/docker/
-        - "$(tasks.clone-repository.results.commit-timestamp).$(tasks.clone-repository.results.short-commit)-stable"
+        - "$(tasks.clone-repository.results.commit-timestamp)-stable"
       runAfter:
       - clair-scan
       - clamav-scan
