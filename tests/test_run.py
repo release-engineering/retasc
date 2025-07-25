@@ -1469,9 +1469,9 @@ def test_run_rule_inherit_params(factory):
 
 
 def test_run_rule_fixed_date(factory):
-    input = Variables(variables={"target_date": "2020-01-01"})
+    inputs = [Variables(variables={"target_date": "2020-01-01"})]
     prereq = PrerequisiteTargetDate(target_date="date(target_date) + 1|day")
-    rule = factory.new_rule(inputs=[input], prerequisites=[prereq])
+    rule = factory.new_rule(inputs=inputs, prerequisites=[prereq])
     report = call_run()
     assert report.data == {
         "inputs": [
