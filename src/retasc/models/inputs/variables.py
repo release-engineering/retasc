@@ -16,15 +16,12 @@ class Variables(InputBase):
     variables: dict[str, Any] = Field(
         description=dedent("""
             Template variables. Example:
-              { date: date('2027-06-01') }
+              { date: "2027-06-01") }
         """).strip()
     )
 
     def values(self, context) -> Iterator[dict]:
-        yield {
-            key: context.template.evaluate(value)
-            for key, value in self.variables.items()
-        }
+        yield self.variables
 
     def report_vars(self, values: dict) -> dict:
         return {"variables": {k: repr(v) for k, v in values.items()}}
