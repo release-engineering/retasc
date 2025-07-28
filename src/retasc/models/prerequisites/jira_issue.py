@@ -2,6 +2,7 @@
 import json
 import os
 from collections.abc import Iterator
+from itertools import takewhile
 from textwrap import dedent
 from typing import Any
 
@@ -145,9 +146,10 @@ def _update_issue(
     jira_issue_id: str,
     template: str | None,
     jira_fields: dict[str, Any],
+    must_exist: bool,
     context,
     parent_issue_key: str | None = None,
-) -> dict:
+) -> dict | None:
     """
     Create and update Jira issue if needed.
 
@@ -175,6 +177,8 @@ def _update_issue(
             _edit_issue(
                 issue, fields, context, label=label, parent_issue_key=parent_issue_key
             )
+    elif must_exist:
+        return None
     else:
         issue = _create_issue(
             fields, context, label=label, parent_issue_key=parent_issue_key
@@ -192,14 +196,21 @@ class JiraIssueTemplate(PrerequisiteBase):
     jira_issue: str = Field(description=ISSUE_ID_DESCRIPTION)
     template: str | None = Field(description=TEMPLATE_PATH_DESCRIPTION, default=None)
     fields: dict[str, Any] = Field(description=FIELDS_DESCRIPTION, default_factory=dict)
+    must_exist: bool = Field(
+        default=False,
+        description=(
+            "If True, the issue will not be created if it does not exist,"
+            " only updated if it exists."
+        ),
+    )
 
 
 class PrerequisiteJiraIssue(JiraIssueTemplate):
     """
     Prerequisite Jira issue.
 
-    If the issue does not exist, ReTaSC will create it and keep it updated
-    until it is resolved.
+    If the issue does not exist, ReTaSC will create it (unless "must_exist" is
+    set to true) and keep it updated until it is resolved.
 
     The prerequisite state is InProgress until the Jira issue is resolved.
     After that, the state is Completed.
@@ -210,6 +221,23 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
     """
 
     subtasks: list[JiraIssueTemplate] = Field(default_factory=list)
+
+    def validate_inique_id(self, rules) -> str | None:
+        own_issue_ids = set(jira_issue_ids(self))
+        preceding_issue_ids = {
+            issue_id
+            for prereq in takewhile(
+                lambda x: not x.must_exist and x is not self,
+                jira_issue_prerequisites(rules),
+            )
+            for issue_id in jira_issue_ids(prereq)
+        }
+        duplicate_issue_ids = own_issue_ids.intersection(preceding_issue_ids)
+        if duplicate_issue_ids:
+            id_list = to_comma_separated(duplicate_issue_ids)
+            return f"Jira issue ID(s) already used elsewhere: {id_list}"
+
+        return None
 
     def validation_errors(self, rules, config) -> list[str]:
         errors = []
@@ -222,6 +250,12 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
         if missing_files:
             file_list = to_comma_separated(missing_files)
             errors.append(f"Jira issue template files not found: {file_list}")
+
+        # Check for duplicate issue IDs in the prerequisites
+        if not self.must_exist:
+            maybe_error = self.validate_inique_id(rules)
+            if maybe_error:
+                errors.append(maybe_error)
 
         return errors
 
@@ -236,7 +270,11 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
         context.template.params["jira_template_file"] = self.template
         jira_issue_id = context.template.render(self.jira_issue)
         context.report.set("jira_issue", jira_issue_id)
-        issue = _update_issue(jira_issue_id, self.template, self.fields, context)
+        issue = _update_issue(
+            jira_issue_id, self.template, self.fields, self.must_exist, context
+        )
+        if issue is None:
+            return ReleaseRuleState.InProgress
         context.template.params["jira_issue"] = issue
         if _is_resolved(issue):
             return ReleaseRuleState.Completed
@@ -249,6 +287,7 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
                     subtask_id,
                     subtask.template,
                     subtask.fields,
+                    subtask.must_exist,
                     context,
                     parent_issue_key=issue["key"],
                 )
@@ -273,3 +312,18 @@ def template_paths(prereq: PrerequisiteJiraIssue) -> Iterator[str]:
     root = templates_root()
     for file in template_filenames(prereq):
         yield f"{root}/{file}"
+
+
+def jira_issue_ids(prereq: PrerequisiteJiraIssue) -> Iterator[str]:
+    yield prereq.jira_issue
+    yield from (x.jira_issue for x in prereq.subtasks)
+
+
+def jira_issue_prerequisites(rules):
+    for rule in rules:
+        for prereq in rule.prerequisites:
+            if isinstance(prereq, PrerequisiteJiraIssue):
+                yield prereq
+    # Ignore this from coverage since rules is always non-empty and the
+    # iteration always stops at a specific prerequisite.
+    return  # pragma: no cover  # NOSONAR
