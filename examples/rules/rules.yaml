@@ -25,6 +25,7 @@
 
     - target_date: "end_date - 1|day"
     - jira_issue: secondary
+      must_exist: true
       fields:
         labels:
           - test

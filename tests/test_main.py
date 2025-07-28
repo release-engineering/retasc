@@ -87,8 +87,6 @@ def test_run(arg, issue_key, capsys):
           TargetDate('end_date - 1|day')
             target_date: 1990-01-03
           JiraIssue('secondary')
-            issue_status: created
-            issue_id: TEST-5
             state: InProgress
           state: InProgress
         Rule('Dependent Rule 1')
@@ -289,9 +287,6 @@ def test_report_output_file(tmp_path):
         {
             "type": "JiraIssue",
             "jira_issue": "secondary",
-            "issue_data": ANY,
-            "issue_status": "created",
-            "issue_id": "DRYRUN-5",
             "state": "InProgress",
         },
     ]
