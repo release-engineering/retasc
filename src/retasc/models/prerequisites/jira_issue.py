@@ -36,11 +36,6 @@ def _is_resolved(issue: dict) -> bool:
     return issue["fields"]["resolution"] is not None
 
 
-def _set_parent_issue(fields: dict, parent_issue_key: str | None = None):
-    if parent_issue_key is not None:
-        fields["parent"] = {"key": parent_issue_key}
-
-
 def _is_jira_field_up_to_date(current_value, new_value):
     if isinstance(current_value, dict) and isinstance(new_value, dict):
         return all(
@@ -51,9 +46,7 @@ def _is_jira_field_up_to_date(current_value, new_value):
     return current_value == new_value
 
 
-def _edit_issue(
-    issue, fields, context, label: str, parent_issue_key: str | None = None
-):
+def _edit_issue(issue, fields, context, label: str):
     to_update = {
         k: v
         for k, v in fields.items()
@@ -71,7 +64,6 @@ def _edit_issue(
 
     context.report.current_data["update"] = to_update
     context.report.set("issue_status", "updated")
-    _set_parent_issue(to_update, parent_issue_key)
     context.jira.edit_issue(issue["key"], to_update)
 
 
@@ -83,12 +75,9 @@ def _report_jira_issue(issue: dict, jira_issue_id: str, context):
     }
 
 
-def _create_issue(
-    fields, context, label: str, parent_issue_key: str | None = None
-) -> dict:
+def _create_issue(fields, context, label: str) -> dict:
     fields.setdefault("labels", []).append(label)
     context.report.set("issue_status", "created")
-    _set_parent_issue(fields, parent_issue_key)
     return context.jira.create_issue(fields)
 
 
@@ -159,6 +148,9 @@ def _update_issue(
     """
     fields = _render_issue_template(template, jira_fields, context)
 
+    if parent_issue_key is not None:
+        fields["parent"] = {"key": parent_issue_key}
+
     supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
     label = f"{context.config.jira_label_prefix}{jira_issue_id}{context.template.params['jira_label_suffix']}"
     jql = f"labels={json.dumps(label)}"
@@ -174,15 +166,11 @@ def _update_issue(
         issue = issues[0]
 
         if not _is_resolved(issue):
-            _edit_issue(
-                issue, fields, context, label=label, parent_issue_key=parent_issue_key
-            )
+            _edit_issue(issue, fields, context, label=label)
     elif must_exist:
         return None
     else:
-        issue = _create_issue(
-            fields, context, label=label, parent_issue_key=parent_issue_key
-        )
+        issue = _create_issue(fields, context, label=label)
         issue["fields"] = {"resolution": None, **fields}
 
     issue["fields"] = {
