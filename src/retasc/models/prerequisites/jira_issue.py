@@ -48,6 +48,12 @@ def _is_jira_field_up_to_date(current_value, new_value):
             for k, v in new_value.items()
         )
 
+    if isinstance(current_value, list) and isinstance(new_value, list):
+        return len(current_value) == len(new_value) and all(
+            _is_jira_field_up_to_date(current_value[i], new_value[i])
+            for i in range(len(current_value))
+        )
+
     return current_value == new_value
 
 
