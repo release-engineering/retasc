@@ -650,6 +650,9 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
           value: gating
           child:
             value: waiverdb
+        product_affects_version:
+          - value: rhel-9
+          - value: rhel-9.0
     """)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])
     mock_jira.search_issues.return_value = [
@@ -660,13 +663,17 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
                     "value": "gating",
                     "child": {"id": "123", "value": "greenwave"},
                 },
+                "product_affects_version": [
+                    {"id": "1", "value": "rhel-9", "disable": False}
+                ],
                 "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
                 "resolution": None,
             },
         }
     ]
     expected_update = {
-        "customfield_123": {"value": "gating", "child": {"value": "waiverdb"}}
+        "customfield_123": {"value": "gating", "child": {"value": "waiverdb"}},
+        "product_affects_version": [{"value": "rhel-9"}, {"value": "rhel-9.0"}],
     }
     additional_jira_fields = {"service": "customfield_123"}
     report = call_run(additional_jira_fields=additional_jira_fields)
@@ -703,9 +710,14 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
             "key": "TEST-1",
             "fields": {
                 "customfield_123": {
+                    "id": "123",
                     "value": "gating",
-                    "child": {"id": "123", "value": "waiverdb"},
+                    "child": {"id": "456", "value": "waiverdb"},
                 },
+                "product_affects_version": [
+                    {"id": "1", "value": "rhel-9", "disable": False},
+                    {"id": "2", "value": "rhel-9.0", "disable": False},
+                ],
                 "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
                 "resolution": None,
             },
