@@ -4,9 +4,20 @@ from datetime import date
 from pytest import fixture
 from requests import Session
 
-from retasc.product_pages_api import Phase, ProductPagesApi, ProductPagesScheduleTask
+from retasc.product_pages_api import (
+    PHASE_IDS,
+    Phase,
+    ProductPagesApi,
+    ProductPagesScheduleTask,
+)
 
 PP_URL = "https://product_pages.example.com"
+
+RELEASES = [
+    {"shortname": "release-1", "phase": PHASE_IDS[Phase.CONCEPT]},
+    {"shortname": "release-2", "phase": PHASE_IDS[Phase.LAUNCH]},
+    {"shortname": "release-3", "phase": PHASE_IDS[Phase.MAINTENANCE]},
+]
 
 
 @fixture
@@ -34,31 +45,30 @@ def test_phase_enum_values():
 
 
 def test_active_releases(pp_api, requests_mock):
-    releases = [{"shortname": "example-1"}]
-    requests_mock.get(f"{PP_URL}/releases/", json=releases)
+    requests_mock.get(f"{PP_URL}/releases/", json=RELEASES)
     resp = pp_api.active_releases(
         "example_product", min_phase=Phase.CONCEPT, max_phase=Phase.LAUNCH
     )
-    assert resp == ["example-1"]
+    assert resp == ["release-1", "release-2"]
 
     req = requests_mock.request_history[0]
     assert req.qs.get("product__shortname") == ["example_product"]
-    assert req.qs.get("phase__gte") == ["concept"]
-    assert req.qs.get("phase__lte") == ["launch"]
+
+    resp = pp_api.active_releases(
+        "example_product", min_phase=Phase.LAUNCH, max_phase=Phase.LAUNCH
+    )
+    assert resp == ["release-2"]
 
 
 def test_active_releases_with_different_phases(pp_api, requests_mock):
-    releases = [{"shortname": "example-2"}]
-    requests_mock.get(f"{PP_URL}/releases/", json=releases)
+    requests_mock.get(f"{PP_URL}/releases/", json=RELEASES)
     resp = pp_api.active_releases(
         "example_product", min_phase=Phase.PLANNING, max_phase=Phase.MAINTENANCE
     )
-    assert resp == ["example-2"]
+    assert resp == ["release-2", "release-3"]
 
     req = requests_mock.request_history[0]
     assert req.qs.get("product__shortname") == ["example_product"]
-    assert req.qs.get("phase__gte") == ["planning"]
-    assert req.qs.get("phase__lte") == ["maintenance"]
 
 
 def test_release_schedules(pp_api, requests_mock):

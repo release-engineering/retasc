@@ -30,6 +30,22 @@ class Phase(str, Enum):
     UNSUPPORTED = "Unsupported"
 
 
+# Copied from PP API /api/v7/schedules/phases/
+PHASE_IDS = {
+    Phase.CONCEPT: 100,
+    Phase.PLANNING: 200,
+    Phase.PLANNING_DEVELOPMENT_TESTING: 230,
+    Phase.CI_CD: 270,
+    Phase.DEVELOPMENT: 300,
+    Phase.DEVELOPMENT_TESTING: 350,
+    Phase.TESTING: 400,
+    Phase.EXCEPTION: 450,
+    Phase.LAUNCH: 500,
+    Phase.MAINTENANCE: 600,
+    Phase.UNSUPPORTED: 1000,
+}
+
+
 @dataclass
 class ProductPagesScheduleTask:
     name: str
@@ -66,15 +82,21 @@ class ProductPagesApi:
         """
         opt = {
             "product__shortname": product_shortname,
-            "phase__gte": min_phase.value,
-            "phase__lte": max_phase.value,
-            "fields": "shortname",
+            "fields": "shortname,phase",
         }
         url = f"{self.api_url}/releases/"
         res = self.session.get(url, params=opt)
         res.raise_for_status()
         data = res.json()
-        return [item["shortname"] for item in data]
+        lower_bound = PHASE_IDS[min_phase]
+        upper_bound = PHASE_IDS[max_phase]
+        # Product Pages release API does not seem to work with phase__gt and
+        # phase__lt parameters.
+        return [
+            item["shortname"]
+            for item in data
+            if lower_bound <= item["phase"] <= upper_bound
+        ]
 
     @cache
     @tracer.start_as_current_span("ProductPagesApi.release_schedules")
