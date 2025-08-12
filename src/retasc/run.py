@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
 import logging
+import os
 from collections.abc import Iterator
 
 from opentelemetry import trace
+from requests import Session
 
 from retasc.jira_client import DryRunJiraClient, JiraClient
 from retasc.models.config import Config
@@ -59,12 +61,39 @@ def iterate_rules(context: RuntimeContext) -> Iterator[tuple[dict, list[Rule]]]:
             yield values, rules
 
 
+@tracer.start_as_current_span("oidc_token")
+def oidc_token(oidc_token_url: str, session: Session) -> str:
+    token_response = session.post(
+        oidc_token_url,
+        {
+            "grant_type": "client_credentials",
+            "client_id": os.getenv("RETASC_OIDC_CLIENT_ID"),
+            "client_secret": os.getenv("RETASC_OIDC_CLIENT_SECRET"),
+        },
+    )
+
+    if not token_response.ok:
+        logger.error("Failed to get OIDC token: %s", token_response.text)
+        token_response.raise_for_status()
+
+    return token_response.json()["access_token"]
+
+
 def run_helper(
     *, config: Config, jira_token: str, jira_cls: type[JiraClient | DryRunJiraClient]
 ) -> Report:
     session = requests_session(
         connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
     )
+
+    if config.oidc_token_url is not None:
+        pp_session = requests_session(
+            connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
+        )
+        token = oidc_token(config.oidc_token_url, pp_session)
+        pp_session.headers["Authorization"] = f"Bearer {token}"
+    else:
+        pp_session = session
 
     # Retry also on 401 to workaround for a Jira bug
     # https://github.com/atlassian-api/atlassian-python-api/issues/257
@@ -75,7 +104,7 @@ def run_helper(
     )
 
     jira = jira_cls(api_url=config.jira_url, token=jira_token, session=jira_session)
-    pp = ProductPagesApi(config.product_pages_url, session=session)
+    pp = ProductPagesApi(config.product_pages_url, session=pp_session)
     rules = parse_rules(config.rules_path, config=config)
     template = TemplateManager(
         template_search_path=config.jira_template_path,

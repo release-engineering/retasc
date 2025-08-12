@@ -76,23 +76,28 @@ def mock_dryrun_jira():
     yield from mock_jira_cls("retasc.run.DryRunJiraClient", "DRYRUN")
 
 
-@fixture(autouse=True)
-def mock_pp():
+@fixture()
+def mock_cls():
     with patch("retasc.run.ProductPagesApi", autospec=True) as mock_cls:
-        mock = mock_cls(ANY, session=ANY)
-        mock.active_releases.return_value = ["rhel-10.0"]
-        mock.release_schedules.return_value = [
-            ProductPagesScheduleTask(
-                name="GA for rhel 10.0",
-                slug="rhel10.ga",
-                start_date=date(1990, 1, 1),
-                end_date=date(1990, 1, 2),
-            ),
-            ProductPagesScheduleTask(
-                name="TASK",
-                slug="task",
-                start_date=date(1990, 1, 3),
-                end_date=date(1990, 1, 4),
-            ),
-        ]
-        yield mock
+        yield mock_cls
+
+
+@fixture(autouse=True)
+def mock_pp(mock_cls):
+    mock = mock_cls.return_value
+    mock.active_releases.return_value = ["rhel-10.0"]
+    mock.release_schedules.return_value = [
+        ProductPagesScheduleTask(
+            name="GA for rhel 10.0",
+            slug="rhel10.ga",
+            start_date=date(1990, 1, 1),
+            end_date=date(1990, 1, 2),
+        ),
+        ProductPagesScheduleTask(
+            name="TASK",
+            slug="task",
+            start_date=date(1990, 1, 3),
+            end_date=date(1990, 1, 4),
+        ),
+    ]
+    yield mock
