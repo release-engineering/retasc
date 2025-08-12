@@ -172,6 +172,9 @@ container image:
 
 - `RETASC_CONFIG` - Path to the main configuration file
 - `RETASC_JIRA_TOKEN` - Jira access token
+- `RETASC_OIDC_CLIENT_ID`, `RETASC_OIDC_CLIENT_SECRET` - OIDC client ID and
+  secret to access Product Pages (`oidc_token_url` must be set in the
+  configuration)
 - `RETASC_LOGGING_CONFIG` - Path to JSON file with the logging configuration;
   see details in [Configuration dictionary
   schema](https://docs.python.org/3/library/logging.config.html#logging-config-dictschema)

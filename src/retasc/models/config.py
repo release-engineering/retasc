@@ -50,6 +50,11 @@ class Config(BaseModel):
         default=30,
     )
 
+    oidc_token_url: str | None = Field(
+        description="OIDC token URL for authentication with Product Pages",
+        default=None,
+    )
+
     def to_jira_field_name(self, field: str) -> str:
         """
         Convert human-readable field name (from configuration) to Jira field

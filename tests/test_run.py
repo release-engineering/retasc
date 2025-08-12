@@ -3,7 +3,8 @@ from datetime import UTC, date, datetime
 from textwrap import dedent
 from unittest.mock import ANY, Mock, call, patch
 
-from pytest import fixture, mark
+from pytest import fixture, mark, raises
+from requests.exceptions import HTTPError
 
 from retasc.models.config import parse_config
 from retasc.models.inputs.jira_issues import JiraIssues
@@ -27,9 +28,10 @@ DUMMY_ISSUE_FIELDS = {"summary": "test"}
 INPUT = "ProductPagesReleases('rhel-10.0')"
 
 
-def call_run(*, additional_jira_fields: dict = {}):
+def call_run(*, oidc_token_url: str | None = None, additional_jira_fields: dict = {}):
     config = parse_config("examples/config.yaml")
     config.jira_fields.update(additional_jira_fields)
+    config.oidc_token_url = oidc_token_url
     return run(config=config, jira_token="")
 
 
@@ -1506,3 +1508,22 @@ def test_run_rule_fixed_date(factory):
             }
         ]
     }
+
+
+def test_run_product_pages_token(mock_cls, requests_mock, mock_parse_rules):
+    oidc_token_url = "https://oidc.example.com/token"
+    token = "DUMMY-TOKEN"
+    requests_mock.post(oidc_token_url, json={"access_token": token})
+    call_run(oidc_token_url=oidc_token_url)
+    mock_cls.assert_called_once()
+    assert mock_cls.mock_calls[0].args == ("https://pp.example.com",)
+    session = mock_cls.mock_calls[0].kwargs.get("session")
+    assert session is not None
+    assert session.headers["Authorization"] == f"Bearer {token}"
+
+
+def test_run_product_pages_token_bad(requests_mock):
+    oidc_token_url = "https://oidc.example.com/token"
+    requests_mock.post(oidc_token_url, status_code=401)
+    with raises(HTTPError):
+        call_run(oidc_token_url=oidc_token_url)
