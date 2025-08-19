@@ -70,6 +70,7 @@ def oidc_token(oidc_token_url: str, session: Session) -> str:
             "client_id": os.getenv("RETASC_OIDC_CLIENT_ID"),
             "client_secret": os.getenv("RETASC_OIDC_CLIENT_SECRET"),
         },
+        headers={"Content-type": "application/x-www-form-urlencoded"},
     )
 
     if not token_response.ok:
