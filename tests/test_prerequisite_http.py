@@ -12,11 +12,14 @@ from retasc.models.prerequisites.http import PrerequisiteHttp
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.templates.template_manager import TemplateManager
 
+DEFAUTL_USER_AGENT = "test-agent"
+
 
 @fixture
 def mock_context():
     context = Mock()
     context.session = Session()
+    context.session.headers["User-Agent"] = DEFAUTL_USER_AGENT
     context.template = TemplateManager(template_search_path=Path())
     yield context
 
@@ -29,6 +32,9 @@ def test_prerequisite_http_get(mock_context, requests_mock):
     assert prereq.update_state(mock_context) == ReleaseRuleState.Completed
     assert mock_context.template.params.get("http_response")
     assert mock_context.template.params["http_response"].status_code == 200
+
+    assert len(requests_mock.request_history) == 1
+    assert requests_mock.request_history[0].headers["User-Agent"] == DEFAUTL_USER_AGENT
 
 
 def test_prerequisite_http_response_template(mock_context, requests_mock):
@@ -82,3 +88,13 @@ def test_prerequisite_http_fails(mock_context, requests_mock):
     prereq = PrerequisiteHttp(url=url)
     with raises(PrerequisiteUpdateStateError):
         prereq.update_state(mock_context)
+
+
+def test_prerequisite_http_headers(mock_context, requests_mock):
+    url = "https://test.example.com"
+    requests_mock.get(url)
+
+    prereq = PrerequisiteHttp(url=url, headers={"User-Agent": "test-agent-2"})
+    assert prereq.update_state(mock_context) == ReleaseRuleState.Completed
+    assert len(requests_mock.request_history) == 1
+    assert requests_mock.request_history[0].headers["User-Agent"] == "test-agent-2"
