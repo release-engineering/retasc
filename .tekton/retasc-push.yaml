@@ -52,15 +52,15 @@ spec:
         value: slack-channel-alerts-retasc-secret
       - name: key-name
         value: dev-team
-        taskRef:
-          params:
-          - name: bundle
-            value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1
-          - name: name
-            value: slack-webhook-notification
-          - name: kind
-            value: Task
-          resolver: bundles
+      taskRef:
+        params:
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1
+        - name: name
+          value: slack-webhook-notification
+        - name: kind
+          value: Task
+        resolver: bundles
     params:
     - description: Source Repository URL
       name: git-url
