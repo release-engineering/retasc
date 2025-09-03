@@ -44,8 +44,6 @@ spec:
         - name: kind
           value: task
         resolver: bundles
-<<<<<<< Updated upstream
-=======
     - name: slack-webhook-notification
       params:
       - name: message
@@ -63,7 +61,6 @@ spec:
           - name: kind
             value: Task
           resolver: bundles
->>>>>>> Stashed changes
     params:
     - description: Source Repository URL
       name: git-url
