@@ -44,6 +44,26 @@ spec:
         - name: kind
           value: task
         resolver: bundles
+<<<<<<< Updated upstream
+=======
+    - name: slack-webhook-notification
+      params:
+      - name: message
+        value: PipelineRun $(context.pipelineRun.name) $(tasks.status)
+      - name: secret-name
+        value: slack-channel-alerts-retasc-secret
+      - name: key-name
+        value: dev-team
+        taskRef:
+          params:
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-slack-webhook-notification:0.1
+          - name: name
+            value: slack-webhook-notification
+          - name: kind
+            value: Task
+          resolver: bundles
+>>>>>>> Stashed changes
     params:
     - description: Source Repository URL
       name: git-url
