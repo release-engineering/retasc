@@ -19,9 +19,13 @@ def render_templates(value, context):
         return [render_templates(x, context) for x in value]
 
     if isinstance(value, dict):
-        return {k: render_templates(v, context) for k, v in value.items()}
+        return render_template_dict(value, context)
 
     return value
+
+
+def render_template_dict(value, context):
+    return {k: render_templates(v, context) for k, v in value.items()}
 
 
 class PrerequisiteHttp(PrerequisiteBase):
@@ -38,6 +42,9 @@ class PrerequisiteHttp(PrerequisiteBase):
     method: str = Field(
         description="HTTP method to use (default is GET)", default="GET"
     )
+    headers: dict[str, str] = Field(
+        description="HTTP headers; values can be templates", default_factory=dict
+    )
     params: dict[str, Any] = Field(
         description="URL parameters; values can be templates", default_factory=dict
     )
@@ -51,12 +58,13 @@ class PrerequisiteHttp(PrerequisiteBase):
 
     def update_state(self, context) -> ReleaseRuleState:
         url = context.template.render(self.url)
-        params = render_templates(self.params, context)
+        headers = render_template_dict(self.headers, context)
+        params = render_template_dict(self.params, context)
         data = render_templates(self.data, context)
 
         try:
             context.template.params["http_response"] = context.session.request(
-                self.method, url, params=params, json=data
+                self.method, url, params=params, json=data, headers=headers
             )
         except RequestException as e:
             raise PrerequisiteUpdateStateError(f"HTTP request failed: {e}")
