@@ -33,7 +33,7 @@ ruamel-yaml = "^0.18.14"
 [tool.poetry.group.dev.dependencies]
 requests-mock = "^1.12.1"
 pytest = "^8.3.3"
-pytest-cov = "^6.0.0"
+pytest-cov = "^7.0.0"
 
 [project.scripts]
 retasc = "retasc.__main__:main"
