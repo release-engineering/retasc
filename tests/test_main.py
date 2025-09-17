@@ -9,6 +9,11 @@ from pytest import fixture, mark, raises
 from retasc.__main__ import main
 
 
+@fixture(autouse=True)
+def autouse_jira_mocks(mock_jira, mock_dryrun_jira):
+    yield
+
+
 @fixture
 def mock_generate_schema():
     with patch("retasc.__main__.generate_schema") as mock:

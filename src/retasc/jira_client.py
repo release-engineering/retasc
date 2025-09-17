@@ -1,4 +1,5 @@
 import logging
+from functools import cached_property
 
 from atlassian import Jira
 from opentelemetry import trace
@@ -30,6 +31,17 @@ class JiraClient:
         # Override timeout separately, because Jira constructor forces the
         # value to be an int.
         self.jira.timeout = timeout
+
+    @cached_property
+    def current_user_key(self) -> str:
+        """
+        Get the current user's account ID.
+        """
+        user = self.jira.myself()
+        if isinstance(user, dict) and isinstance(user.get("key"), str):
+            return user["key"]
+
+        raise RuntimeError(f"Unexpected response: {user!r}")
 
     @tracer.start_as_current_span("JiraClient.edit_issue")
     def edit_issue(
@@ -85,12 +97,14 @@ class JiraClient:
         return self.jira.jql_get_list_of_tickets(jql)
 
     @tracer.start_as_current_span("JiraClient.get_issues")
-    def get_issue(self, issue_key: str) -> dict:
+    def get_issue(
+        self, issue_key: str, *, fields: str | dict, expand: str | None = None
+    ) -> dict:
         """
         Get a Jira issue.
         """
 
-        data = self.jira.issue(issue_key)
+        data = self.jira.issue(issue_key, fields=fields, expand=expand)
         if isinstance(data, dict):
             return data
 
