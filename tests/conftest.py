@@ -53,6 +53,14 @@ def mock_jira_cls(cls: str, new_issue_key_prefix: str):
     with patch(cls, autospec=True) as mock_cls:
         mock = mock_cls(ANY, token=ANY, session=ANY)
         mock.search_issues.return_value = []
+        mock.get_issue.return_value = {
+            "changelog": {
+                "startAt": 0,
+                "maxResults": 0,
+                "total": 0,
+                "histories": [],
+            }
+        }
 
         last_issue_id = 0
 
@@ -66,7 +74,7 @@ def mock_jira_cls(cls: str, new_issue_key_prefix: str):
         yield mock
 
 
-@fixture(autouse=True)
+@fixture
 def mock_jira():
     yield from mock_jira_cls("retasc.run.JiraClient", "TEST")
 
