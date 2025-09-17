@@ -32,6 +32,11 @@ def dryrun_jira_api():
     return DryRunJiraClient(JIRA_URL, token="DUMMY-TOKEN", session=Session())
 
 
+def test_current_user_key(jira_api, requests_mock):
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/myself", json={"key": "retasc-bot"})
+    assert jira_api.current_user_key == "retasc-bot"
+
+
 def test_create_issue(jira_api, requests_mock):
     requests_mock.post(
         f"{JIRA_URL}/rest/api/2/issue?updateHistory=false", json=TEST_RES
@@ -59,7 +64,7 @@ def test_edit_issue_dryrun(dryrun_jira_api, requests_mock):
 
 def test_get_issue(jira_api, requests_mock):
     requests_mock.get(f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}", json=TEST_RES)
-    resp = jira_api.get_issue(ISSUE_KEY)
+    resp = jira_api.get_issue(ISSUE_KEY, fields=["summary", "description"])
     assert resp["key"] == ISSUE_KEY
 
 
@@ -89,7 +94,13 @@ def test_unexpected_response_create_issue(jira_api, requests_mock):
 def test_unexpected_response_get_issue(jira_api, requests_mock):
     requests_mock.get(f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}", json=[])
     with raises(RuntimeError, match=r"Unexpected response: \[\]"):
-        jira_api.get_issue(ISSUE_KEY)
+        jira_api.get_issue(ISSUE_KEY, fields=["summary", "description"])
+
+
+def test_unexpected_response_current_user_key(jira_api, requests_mock):
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/myself", json=[])
+    with raises(RuntimeError, match=r"Unexpected response: \[\]"):
+        jira_api.current_user_key
 
 
 def test_timeout(requests_mock):

@@ -39,6 +39,11 @@ def issue_labels(issue_id: str) -> list[str]:
     return [f"retasc-id-{issue_id}-rhel-10.0"]
 
 
+@fixture(autouse=True)
+def autouse_jira_mocks(mock_jira, mock_dryrun_jira):
+    yield
+
+
 @fixture
 def mock_parse_rules():
     with patch("retasc.run.parse_rules") as mock:
@@ -633,6 +638,113 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
                                 "jira_issue": "test_jira_template_1",
                                 "issue_id": "TEST-1",
                                 "issue_data": ANY,
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
+            }
+        ]
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once()
+
+
+def test_run_rule_jira_issue_skip_update_user_modified_fields(factory, mock_jira):
+    """
+    Avoid updating Jira issue fields that were modified by a user.
+    """
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("""
+        summary: new-retasc-summary
+        description: new-retasc-description
+    """)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "summary": "retasc-summary",
+                "description": "retasc-description",
+                "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
+                "resolution": None,
+            },
+        }
+    ]
+    mock_jira.current_user_key.return_value = {"key": "retasc-bot"}
+    mock_jira.get_issue.return_value = {
+        "key": "TEST-1",
+        "changelog": {
+            "startAt": 0,
+            "maxResults": 2,
+            "total": 2,
+            "histories": [
+                {
+                    "author": {"key": "retasc-bot"},
+                    "created": "2025-01-01T01:00:00.000+0000",
+                    "items": [
+                        {"field": "description", "from": "test0", "to": "test1"},
+                    ],
+                },
+                {
+                    "author": {"key": "alice"},
+                    "created": "2025-01-01T02:00:00.000+0000",
+                    "items": [
+                        {"field": "description", "from": "test1", "to": "test2"},
+                    ],
+                },
+            ],
+        },
+    }
+    expected_update = {"summary": "new-retasc-summary"}
+    expected_skipped_fields = ["description"]
+    report = call_run()
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "issue_data": ANY,
+                                "issue_status": "updated",
+                                "update": expected_update,
+                                "skip_modified_fields": expected_skipped_fields,
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
+            }
+        ]
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once_with("TEST-1", expected_update)
+
+    mock_jira.search_issues.return_value[0]["fields"]["summary"] = "new-retasc-summary"
+    report = call_run()
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "issue_data": ANY,
+                                "skip_modified_fields": expected_skipped_fields,
                                 "state": "InProgress",
                             }
                         ],

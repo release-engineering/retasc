@@ -52,7 +52,32 @@ def _is_jira_field_up_to_date(current_value, new_value):
     return current_value == new_value
 
 
-def _edit_issue(issue, fields, context, label: str):
+def _skip_user_modified_fields(issue: dict, to_update: dict, context) -> dict:
+    """
+    Avoid updating Jira issue fields that were modified by a user.
+    """
+    data = context.jira.get_issue(issue["key"], fields=[], expand="changelog")
+    changelog = data.get("changelog", {}).get("histories", [])
+    field_authors = {
+        item["field"]: change.get("author", {}).get("key")
+        for change in changelog
+        for item in change.get("items", [])
+    }
+
+    skip_fields = {
+        field
+        for field in to_update
+        if field != "labels"
+        and field_authors.get(field) not in (context.jira.current_user_key, None)
+    }
+    if skip_fields:
+        context.report.set("skip_modified_fields", sorted(skip_fields))
+        return {k: v for k, v in to_update.items() if k not in skip_fields}
+
+    return to_update
+
+
+def _edit_issue(issue: dict, fields: dict, context, label: str):
     to_update = {
         k: v
         for k, v in fields.items()
@@ -65,6 +90,10 @@ def _edit_issue(issue, fields, context, label: str):
     if not labels.issubset(current_labels):
         to_update["labels"] = sorted(labels)
 
+    if not to_update:
+        return
+
+    to_update = _skip_user_modified_fields(issue, to_update, context)
     if not to_update:
         return
 
