@@ -49,9 +49,6 @@ exists for specific releases in Product Pages:
 ```yaml
 name: New RHEL release
 
-# version of the rule schema
-version: 1
-
 # inputs for tasks created from this rule
 inputs:
   # The input here is "rhel" product in Product Pages.

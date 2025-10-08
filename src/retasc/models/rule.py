@@ -13,8 +13,6 @@ from retasc.models.prerequisites import Prerequisite
 from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
 from retasc.models.release_rule_state import ReleaseRuleState
 
-SCHEMA_VERSION = 1
-
 
 def default_inputs() -> list[Input]:
     return [ProductPagesReleases(product="rhel")]
@@ -35,9 +33,6 @@ class Rule(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    version: int = Field(
-        description=f"The version of the rule schema. The latest version is {SCHEMA_VERSION}."
-    )
     name: str = Field(description="The name of the rule.")
     inputs: list[Input] = Field(
         description="Inputs for the rule",

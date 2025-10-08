@@ -42,19 +42,7 @@ def test_unexpected_fields(rule_dict):
     Rule(**rule_dict)
 
 
-def test_incorrect_version_types(rule_dict):
-    expected_error = (
-        r"version\n  Input should be a valid integer, "
-        r"unable to parse string as an integer"
-    )
-
-    rule_dict["version"] = "one"
-
-    with raises(ValidationError, match=expected_error):
-        Rule(**rule_dict)
-
-
 def test_missing_fields(rule_dict):
-    del rule_dict["version"]
+    del rule_dict["name"]
     with raises(ValidationError, match="Field required"):
         Rule(**rule_dict)
