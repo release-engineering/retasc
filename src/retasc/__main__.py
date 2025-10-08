@@ -68,6 +68,13 @@ def parse_args():
             type=str,
             help="Output path for the report JSON file",
         )
+        subparser.add_argument(
+            "rule_files",
+            metavar="RULE_FILE",
+            type=str,
+            nargs="*",
+            help="Path to rule files or directories (default is from the config file)",
+        )
 
     return parser.parse_args()
 
@@ -98,7 +105,8 @@ def _run(args):
     jira_token = os.environ["RETASC_JIRA_TOKEN"]
     config = get_config()
     run_fn = run if args.command == "run" else dry_run
-    report = run_fn(config=config, jira_token=jira_token)
+    rule_files = args.rule_files if args.rule_files else [config.rules_path]
+    report = run_fn(config=config, jira_token=jira_token, rule_files=rule_files)
 
     if args.report:
         with open(args.report, "w") as f:
