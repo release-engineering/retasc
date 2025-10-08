@@ -32,7 +32,7 @@ def call_run(*, oidc_token_url: str | None = None, additional_jira_fields: dict 
     config = parse_config("examples/config.yaml")
     config.jira_fields.update(additional_jira_fields)
     config.oidc_token_url = oidc_token_url
-    return run(config=config, jira_token="")
+    return run(config=config, jira_token="", rule_files=[config.rules_path])
 
 
 def issue_labels(issue_id: str) -> list[str]:

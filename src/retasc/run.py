@@ -81,7 +81,11 @@ def oidc_token(oidc_token_url: str, session: Session) -> str:
 
 
 def run_helper(
-    *, config: Config, jira_token: str, jira_cls: type[JiraClient | DryRunJiraClient]
+    *,
+    config: Config,
+    jira_token: str,
+    jira_cls: type[JiraClient | DryRunJiraClient],
+    rule_files: list[str],
 ) -> Report:
     session = requests_session(
         connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
@@ -106,7 +110,11 @@ def run_helper(
 
     jira = jira_cls(api_url=config.jira_url, token=jira_token, session=jira_session)
     pp = ProductPagesApi(config.product_pages_url, session=pp_session)
-    rules = parse_rules(config.rules_path, config=config)
+    rules = {
+        k: v
+        for rule_path in rule_files
+        for k, v in parse_rules(rule_path, config=config).items()
+    }
     template = TemplateManager(
         template_search_path=config.jira_template_path,
         template_extensions=config.template_extensions,
@@ -123,8 +131,8 @@ def run_helper(
     )
     context.template.env.globals["retasc_context"] = context
 
-    for input, rules in iterate_rules(context):
-        for rule in rules:
+    for input, input_rules in iterate_rules(context):
+        for rule in input_rules:
             context.template.params = input.copy()
             context.template.params["config"] = context.config
             context.template.params["report"] = context.report.data
@@ -135,12 +143,19 @@ def run_helper(
 
 
 @tracer.start_as_current_span("run")
-def run(*, config: Config, jira_token: str) -> Report:
-    return run_helper(config=config, jira_token=jira_token, jira_cls=JiraClient)
+def run(*, config: Config, jira_token: str, rule_files: list[str]) -> Report:
+    return run_helper(
+        config=config, jira_token=jira_token, jira_cls=JiraClient, rule_files=rule_files
+    )
 
 
 @tracer.start_as_current_span("dry_run")
-def dry_run(*, config: Config, jira_token: str) -> Report:
-    report = run_helper(config=config, jira_token=jira_token, jira_cls=DryRunJiraClient)
+def dry_run(*, config: Config, jira_token: str, rule_files: list[str]) -> Report:
+    report = run_helper(
+        config=config,
+        jira_token=jira_token,
+        jira_cls=DryRunJiraClient,
+        rule_files=rule_files,
+    )
     logger.warning("To apply changes, run without --dry-run flag")
     return report
