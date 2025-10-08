@@ -1,5 +1,4 @@
-- version: 1
-  name: "Example Rule"
+- name: "Example Rule"
   inputs:
     - product: rhel
   prerequisites:
@@ -30,16 +29,14 @@
         labels:
           - test
 
-- version: 1
-  name: "Dependent Rule 1"
+- name: "Dependent Rule 1"
   inputs:
     - product: rhel
   prerequisites:
     - schedule_task: "TASK"
     - target_date: "start_date - 3|weeks"
 
-- version: 1
-  name: "Dependent Rule 2"
+- name: "Dependent Rule 2"
   inputs:
     - product: rhel
   prerequisites:

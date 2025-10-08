@@ -14,7 +14,6 @@ JIRA_TEMPLATES = [
     "secondary.yaml",
 ]
 RULE_DATA = {
-    "version": 1,
     "name": "Example Rule",
     "prerequisites": [
         {"schedule_task": "TASK"},
@@ -34,7 +33,6 @@ RULE_DATA = {
 }
 DEPENDENT_RULES_DATA = [
     {
-        "version": 1,
         "name": "Dependent Rule 1",
         "prerequisites": [
             {"schedule_task": "TASK"},
@@ -42,7 +40,6 @@ DEPENDENT_RULES_DATA = [
         ],
     },
     {
-        "version": 1,
         "name": "Dependent Rule 2",
         "prerequisites": [
             {"schedule_task": "TASK"},
@@ -129,7 +126,6 @@ def test_parse_rule_missing_jira_templates(rule_path, templates_root):
 def test_parse_rule_duplicate_jira_ids(rule_path, templates_root):
     file = rule_path / "rule.yaml"
     rule2 = {
-        "version": 1,
         "name": "Example Rule 2",
         "prerequisites": [
             {

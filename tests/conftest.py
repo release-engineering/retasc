@@ -11,7 +11,6 @@ from retasc.yaml import yaml
 @fixture
 def rule_dict():
     return {
-        "version": 1,
         "name": "Example Rule",
         "inputs": [{"product": "rhel"}],
         "prerequisites": [
@@ -37,7 +36,7 @@ def valid_rule_file(rule_path, rule_dict):
 
 @fixture
 def invalid_rule_file(rule_path, rule_dict):
-    del rule_dict["version"]
+    del rule_dict["name"]
     file = rule_path / "rule.yaml"
     yaml().dump(rule_dict, file)
     yield str(file)

@@ -1402,7 +1402,6 @@ def test_run_rule_jira_issue_dependency(factory: Factory, mock_jira):
 
 def test_run_rule_prerequsite_variable(factory):
     rule_data = {
-        "version": 1,
         "name": "test-rule",
         "prerequisites": [
             {"variable": "test_var", "value": "release"},
@@ -1442,7 +1441,6 @@ def test_run_rule_prerequsite_variable(factory):
 
 def test_run_rule_prerequsite_variable_string(factory):
     rule_data = {
-        "version": 1,
         "name": "test-rule",
         "prerequisites": [
             {"variable": "test_var", "string": "{{ release }}"},
@@ -1484,7 +1482,6 @@ def test_run_rule_inherit_params(factory):
     """Template parameters are inherited from dependent rules"""
     rule_data_list = [
         {
-            "version": 1,
             "name": "rule-1",
             "prerequisites": [
                 {"variable": "test_var", "string": "rule-1"},
@@ -1492,7 +1489,6 @@ def test_run_rule_inherit_params(factory):
             ],
         },
         {
-            "version": 1,
             "name": "rule-2",
             "prerequisites": [
                 {"rule": "rule-1"},
@@ -1500,7 +1496,6 @@ def test_run_rule_inherit_params(factory):
             ],
         },
         {
-            "version": 1,
             "name": "rule-3",
             "prerequisites": [
                 {"variable": "test_var", "string": "rule-2"},
@@ -1509,7 +1504,6 @@ def test_run_rule_inherit_params(factory):
             ],
         },
         {
-            "version": 1,
             "name": "rule-4",
             "prerequisites": [
                 {"condition": "test_var|default"},
