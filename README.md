@@ -248,7 +248,7 @@ Inspect specific test failure:
 tox -e py3 -- --no-cov -lvvvvsxk test_init_tracing_with_valid_config
 ```
 
-Install poetry with [pipx]:
+Install uv with [pipx]:
 
 ```
 # On macOS
@@ -259,26 +259,22 @@ pipx ensurepath
 sudo dnf install pipx
 pipx ensurepath
 
-# Install poetry
-pipx install poetry
+# Install uv
+pipx install uv
 ```
 
-Install and run the app to virtualenv with [Poetry]:
+Install and run the app to virtualenv with [uv]:
 
 ```
-poetry install
-poetry run retasc --help
+uv install
+uv run retasc --help
 ```
 
 Clean up the virtualenv (can be useful after larger host system updates):
 
 ```
-poetry env remove --all
+uv venv --clear
 ```
 
-If you are not familiar with those please watch this [Tutorial] to have some ideas on what are
-poetry, pre-commit, flake, tox, etc...
-
 [pipx]: https://pipx.pypa.io/stable/
-[Poetry]: https://python-poetry.org/docs/
-[Tutorial]: https://www.linkedin.com/learning/create-an-open-source-project-in-python
+[uv]: https://docs.astral.sh/uv/
