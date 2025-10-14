@@ -13,18 +13,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@3259c6206f993105e3a61b142c2d97bf4b9ef83d # v7
         with:
           python-version: "3.13"
-
-      - name: Install dependencies
-        run: python -m pip install tox
+          enable-cache: true
 
       - name: Test with tox
-        run: python -m tox -e py3
+        run: uvx --with tox-uv tox -e py3
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5
@@ -43,28 +41,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@3259c6206f993105e3a61b142c2d97bf4b9ef83d # v7
         with:
           python-version: "3.13"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install tox
+          enable-cache: true
 
       - name: Test '${{ matrix.tox_env }}' with tox
-        run: tox -e ${{ matrix.tox_env }}
+        run: uvx --with tox-uv tox -e ${{ matrix.tox_env }}
 
   hadolint:
     name: Hadolint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
           dockerfile: Containerfile
           # Ignore list:
@@ -76,21 +70,19 @@ jobs:
     name: Validate Rules
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@3259c6206f993105e3a61b142c2d97bf4b9ef83d # v7
         with:
           python-version: "3.13"
-
-      - name: Install Poetry
-        run: python -m pip install poetry
+          enable-cache: true
 
       - name: Install Dependencies
-        run: poetry install --only=main
+        run: uv sync --no-dev
 
       - name: Validate rule file
         env:
           RETASC_CONFIG: examples/config.yaml
         run: |
-          poetry run retasc validate-rules examples/rules
+          uv run retasc validate-rules examples/rules

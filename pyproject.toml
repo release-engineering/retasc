@@ -5,42 +5,41 @@ description = "Plans product release work in Jira based on schedules in Product 
 authors = [
   {name = "Red Hat, Inc. and others"}
 ]
-license = "GPL-3.0-or-later"
+license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
-packages = [{include = "retasc", from = "src"}]
 requires-python = ">=3.12,<3.14"
-
-# dependencies are still managed in tool.poetry.dependencies to support
-# Renovate: https://github.com/renovatebot/renovate/issues/33509
-dynamic = ["dependencies"]
+dependencies = [
+  "opentelemetry-sdk>=1.35.0,<2",
+  "opentelemetry-instrumentation-flask>=0.56b0,<1",
+  "opentelemetry-instrumentation-requests>=0.56b0,<1",
+  "opentelemetry-exporter-otlp-proto-http>=1.35.0,<2",
+  "requests>=2.32.4,<3",
+  "urllib3>=2.3.0,<3",
+  "pydantic>=2.11.7,<3",
+  "atlassian-python-api>=4.0.7,<5",
+  "Jinja2>=3.1.6,<4",
+  "ruamel-yaml>=0.18.14,<0.19",
+]
 
 [project.urls]
 Repository = "https://github.com/release-engineering/retasc"
 
-[tool.poetry.dependencies]
-opentelemetry-sdk = "^1.35.0"
-opentelemetry-instrumentation-flask = "^0.56b0"
-opentelemetry-instrumentation-requests = "^0.56b0"
-opentelemetry-exporter-otlp-proto-http = "^1.35.0"
-
-requests = "^2.32.4"
-urllib3 = "^2.3.0"
-pydantic = "^2.11.7"
-atlassian-python-api = "^4.0.4"
-Jinja2 = "^3.1.6"
-ruamel-yaml = "^0.18.14"
-
-[tool.poetry.group.dev.dependencies]
-requests-mock = "^1.12.1"
-pytest = "^8.3.3"
-pytest-cov = "^7.0.0"
-
 [project.scripts]
 retasc = "retasc.__main__:main"
 
+[project.optional-dependencies]
+dev = [
+  "requests-mock>=1.12.1,<2",
+  "pytest>=8.3.3,<9",
+  "pytest-cov>=7.0.0,<8",
+]
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/retasc"]
 
 [tool.ruff.lint]
 extend-select = [

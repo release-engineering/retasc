@@ -30,7 +30,7 @@ class JiraClient:
         )
         # Override timeout separately, because Jira constructor forces the
         # value to be an int.
-        self.jira.timeout = timeout
+        self.jira.timeout = timeout  # type: ignore
 
     @cached_property
     def current_user_key(self) -> str:
@@ -93,7 +93,7 @@ class JiraClient:
         """
 
         if fields:
-            return self.jira.jql_get_list_of_tickets(jql, fields=fields)
+            return self.jira.jql_get_list_of_tickets(jql, fields=fields)  # type: ignore
         return self.jira.jql_get_list_of_tickets(jql)
 
     @tracer.start_as_current_span("JiraClient.get_issues")
