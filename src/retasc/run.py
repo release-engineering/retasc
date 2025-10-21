@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from collections.abc import Iterator
+from http.cookiejar import MozillaCookieJar
 
 from opentelemetry import trace
 from requests import Session
@@ -91,7 +92,16 @@ def run_helper(
         connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
     )
 
-    if config.oidc_token_url is not None:
+    pp_cookies = os.getenv("RETASC_PRODUCT_PAGES_COOKIES")
+    if pp_cookies:
+        cookiejar = MozillaCookieJar()
+        cookiejar.load(pp_cookies)
+        pp_session = requests_session(
+            connect_timeout=config.connect_timeout,
+            read_timeout=config.connect_timeout,
+            cookies=cookiejar,
+        )
+    elif config.oidc_token_url is not None:
         pp_session = requests_session(
             connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
         )
