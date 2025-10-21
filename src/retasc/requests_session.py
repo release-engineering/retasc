@@ -23,11 +23,17 @@ class HTTPAdapterWithTimeout(HTTPAdapter):
 
 
 def requests_session(
-    *, connect_timeout: float, read_timeout: float, retry_on_statuses: tuple = ()
+    *,
+    connect_timeout: float,
+    read_timeout: float,
+    retry_on_statuses: tuple = (),
+    cookies=None,
 ):
     """Returns https session for request processing."""
 
     session = requests.Session()
+    if cookies is not None:
+        session.cookies = cookies
     retry = Retry(
         total=5,
         read=3,

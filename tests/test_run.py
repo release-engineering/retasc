@@ -1633,3 +1633,24 @@ def test_run_product_pages_token_bad(requests_mock):
     requests_mock.post(oidc_token_url, status_code=401)
     with raises(HTTPError):
         call_run(oidc_token_url=oidc_token_url)
+
+
+def test_run_product_pages_kerberos_auth(
+    mock_cls, requests_mock, mock_parse_rules, tmpdir, monkeypatch
+):
+    cookies = tmpdir / "pp_cookies.txt"
+    timestamp = int(datetime.now().timestamp()) + 3600
+    cookies.write(
+        "# Netscape HTTP Cookie File\n"
+        f"pp.example.com	FALSE	/	FALSE	{timestamp}	test	value"
+    )
+    monkeypatch.setenv("RETASC_PRODUCT_PAGES_COOKIES", str(cookies))
+    call_run()
+    mock_cls.assert_called_once()
+    assert mock_cls.mock_calls[0].args == ("https://pp.example.com",)
+    session = mock_cls.mock_calls[0].kwargs.get("session")
+    assert session is not None
+    assert session.cookies is not None
+    assert [(c.domain, c.name, c.value) for c in session.cookies] == [
+        ("pp.example.com", "test", "value")
+    ]

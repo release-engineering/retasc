@@ -180,6 +180,17 @@ container image:
   `https://jaeger.example.com:4318/v1/traces`
 - `OTEL_EXPORTER_SERVICE_NAME` - service name for OpenTelemetry; if unset
   (default), traces are not exported
+- `RETASC_PRODUCT_PAGES_COOKIES` - Optional. Path to a cookies file for Product
+  Pages authentication using the current Kerberos ticket. If set, this is used
+  instead of the OIDC authentication. Create the cookies file using the
+  following `curl` command:
+
+  ```
+  kinit
+  export RETASC_PRODUCT_PAGES_COOKIES=$PWD/pp_cookies.txt
+  curl --negotiate --location-trusted -d "" -sLc $RETASC_PRODUCT_PAGES_COOKIES \
+    https://product_pages.example.com/oidc/authenticate
+  ```
 
 ## Validate Rule Files
 
