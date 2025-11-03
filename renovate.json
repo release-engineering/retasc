@@ -6,6 +6,7 @@
     ":disableDependencyDashboard",
     "schedule:weekly"
   ],
+  "lockFileMaintenance": {"enabled": true},
   "dockerfile": {
     "managerFilePatterns": [
       "/Containerfile/"
