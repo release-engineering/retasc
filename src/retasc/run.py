@@ -84,9 +84,11 @@ def oidc_token(oidc_token_url: str, session: Session) -> str:
 def run_helper(
     *,
     config: Config,
-    jira_token: str,
     jira_cls: type[JiraClient | DryRunJiraClient],
     rule_files: list[str],
+    jira_token: str | None = None,
+    jira_password: str | None = None,
+    jira_username: str | None = None,
 ) -> Report:
     session = requests_session(
         connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
@@ -118,7 +120,14 @@ def run_helper(
         retry_on_statuses=(401,),
     )
 
-    jira = jira_cls(api_url=config.jira_url, token=jira_token, session=jira_session)
+    jira = jira_cls(
+        api_url=config.jira_url,
+        token=jira_token,
+        username=jira_username,
+        password=jira_password,
+        cloud=config.jira_cloud,
+        session=jira_session,
+    )
     pp = ProductPagesApi(config.product_pages_url, session=pp_session)
     rules = {
         k: v
@@ -153,19 +162,22 @@ def run_helper(
 
 
 @tracer.start_as_current_span("run")
-def run(*, config: Config, jira_token: str, rule_files: list[str]) -> Report:
+def run(*, config: Config, rule_files: list[str], **kwargs) -> Report:
     return run_helper(
-        config=config, jira_token=jira_token, jira_cls=JiraClient, rule_files=rule_files
+        config=config,
+        jira_cls=JiraClient,
+        rule_files=rule_files,
+        **kwargs,
     )
 
 
 @tracer.start_as_current_span("dry_run")
-def dry_run(*, config: Config, jira_token: str, rule_files: list[str]) -> Report:
+def dry_run(*, config: Config, rule_files: list[str], **kwargs) -> Report:
     report = run_helper(
         config=config,
-        jira_token=jira_token,
         jira_cls=DryRunJiraClient,
         rule_files=rule_files,
+        **kwargs,
     )
     logger.warning("To apply changes, run without --dry-run flag")
     return report

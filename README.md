@@ -168,7 +168,11 @@ Below is list of environment variables supported by the application and in the
 container image:
 
 - `RETASC_CONFIG` - Path to the main configuration file
-- `RETASC_JIRA_TOKEN` - Jira access token
+- `RETASC_JIRA_USERNAME` - Jira username used in basic
+  authentication
+- `RETASC_JIRA_PASSWORD` - Jira token used in basic authentication
+- `RETASC_JIRA_TOKEN` - Jira access token, alternative to basic
+  authentication
 - `RETASC_OIDC_CLIENT_ID`, `RETASC_OIDC_CLIENT_SECRET` - OIDC client ID and
   secret to access Product Pages (`oidc_token_url` must be set in the
   configuration)

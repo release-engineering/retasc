@@ -32,6 +32,10 @@ class Config(BaseModel):
             " field ID (as in /api/2/field Jira API)"
         )
     )
+    jira_cloud: bool = Field(
+        description="Whether Jira instance is Jira Cloud",
+        default=False,
+    )
 
     connect_timeout: float = Field(
         description="HTTP connect timeout in seconds",
