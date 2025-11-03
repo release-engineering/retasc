@@ -1013,6 +1013,64 @@ def test_run_rule_template_error(factory):
 
 
 @mark.parametrize(
+    "expected_error",
+    (
+        {
+            "msg": "HTTPError('Failed')",
+        },
+        {
+            "msg": "HTTPError('Failed') status=404 body='failed' url='https://test.example.com'",
+            "request": Mock(url="https://test.example.com"),
+            "response": Mock(status_code=404, text="failed"),
+        },
+    ),
+)
+def test_run_rule_http_error(factory, expected_error):
+    class DummyPrerequisite(PrerequisiteCondition):
+        condition: str = ""
+
+        def update_state(self, context):
+            raise HTTPError(
+                "Failed",
+                request=expected_error.get("request"),
+                response=expected_error.get("response"),
+            )
+
+    rule = factory.new_rule(prerequisites=[DummyPrerequisite()])
+
+    report = call_run()
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "Dummy",
+                                "error": f"❌ {expected_error['msg']}",
+                                "state": "Pending",
+                            }
+                        ],
+                        "state": "Pending",
+                    },
+                ],
+            }
+        ]
+    }
+    assert report.errors == [
+        dedent(f"""
+            {INPUT}
+              Rule({rule.name!r})
+                Dummy('')
+                  {expected_error["msg"]}
+        """).strip()
+    ]
+
+
+@mark.parametrize(
     ("target_date", "is_draft", "result"),
     (
         ("start_date", False, True),
