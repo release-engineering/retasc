@@ -43,6 +43,29 @@ class Rule(BaseModel):
     )
     rule_file: SkipJsonSchema[str | None] = None
 
+    def _process_prerequisite(self, prereq: Prerequisite, context) -> ReleaseRuleState:
+        try:
+            return prereq.update_state(context)
+        except HTTPError as e:
+            msg = [repr(e)]
+            if e.response is not None:
+                msg.extend(
+                    [
+                        f"status={e.response.status_code!r}",
+                        f"body={e.response.text!r}",
+                    ]
+                )
+            if e.request is not None:
+                msg.append(f"url={e.request.url!r}")
+            context.report.add_error(" ".join(msg))
+            return ReleaseRuleState.Pending
+        except (
+            PrerequisiteUpdateStateError,
+            jinja2.exceptions.TemplateError,
+        ) as e:
+            context.report.add_error(str(e))
+            return ReleaseRuleState.Pending
+
     def update_state(self, context) -> ReleaseRuleState:
         """
         The return value is:
@@ -66,16 +89,7 @@ class Rule(BaseModel):
             section = type(prereq).__name__.replace("Prerequisite", "")
             name = list(prereq.model_dump().values())[0]
             with context.report.section("prerequisites", type=section, name=name):
-                try:
-                    state = prereq.update_state(context)
-                except (
-                    HTTPError,
-                    PrerequisiteUpdateStateError,
-                    jinja2.exceptions.TemplateError,
-                ) as e:
-                    context.report.add_error(str(e))
-                    state = ReleaseRuleState.Pending
-
+                state = self._process_prerequisite(prereq, context)
                 if state != ReleaseRuleState.Completed:
                     context.report.set("state", state.name)
 
