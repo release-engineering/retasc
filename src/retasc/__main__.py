@@ -102,11 +102,19 @@ def to_json_serializable(obj):
 
 
 def _run(args):
-    jira_token = os.environ["RETASC_JIRA_TOKEN"]
+    jira_token = os.environ.get("RETASC_JIRA_TOKEN")
+    jira_password = os.environ.get("RETASC_JIRA_PASSWORD")
+    jira_username = os.environ.get("RETASC_JIRA_USERNAME")
     config = get_config()
     run_fn = run if args.command == "run" else dry_run
     rule_files = args.rule_files if args.rule_files else [config.rules_path]
-    report = run_fn(config=config, jira_token=jira_token, rule_files=rule_files)
+    report = run_fn(
+        config=config,
+        rule_files=rule_files,
+        jira_token=jira_token,
+        jira_username=jira_username,
+        jira_password=jira_password,
+    )
 
     if args.report:
         with open(args.report, "w") as f:

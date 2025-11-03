@@ -18,15 +18,21 @@ class JiraClient:
         self,
         api_url: str,
         *,
-        token: str,
+        token: str | None = None,
         session: Session,
         timeout: int | tuple[int, int] | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        cloud: bool = False,
     ):
         self.api_url = api_url
         self.jira = Jira(
             url=api_url,
+            username=username,
+            password=password,
             token=token,
             session=session,
+            cloud=cloud,
         )
         # Override timeout separately, because Jira constructor forces the
         # value to be an int.
