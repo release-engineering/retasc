@@ -33,6 +33,10 @@ dev = [
   "pytest>=8.3.3,<9",
   "pytest-cov>=7.0.0,<8",
 ]
+types = [
+    "mypy>=1.18.2",
+    "pip>=25.3",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -53,3 +57,9 @@ extend-select = [
 
 [tool.ruff.lint.mccabe]
 max-complexity = 6
+
+[tool.coverage.report]
+fail_under = 100
+
+[tool.coverage.run]
+branch = true
