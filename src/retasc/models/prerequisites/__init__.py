@@ -2,6 +2,7 @@
 from .condition import PrerequisiteCondition
 from .http import PrerequisiteHttp
 from .jira_issue import PrerequisiteJiraIssue
+from .pipeline_run import PrerequisitePipelineRun
 from .rule import PrerequisiteRule
 from .schedule import PrerequisiteSchedule
 from .target_date import PrerequisiteTargetDate
@@ -12,6 +13,7 @@ type Prerequisite = (
     PrerequisiteCondition
     | PrerequisiteHttp
     | PrerequisiteJiraIssue
+    | PrerequisitePipelineRun
     | PrerequisiteRule
     | PrerequisiteSchedule
     | PrerequisiteTargetDate
