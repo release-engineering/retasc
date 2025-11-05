@@ -26,10 +26,12 @@ class JiraIssues(InputBase):
                 context.config.from_jira_field_name(f): v
                 for f, v in issue["fields"].items()
             }
+            name_suffix = f"--jira-{issue['key']}"
             yield {
                 "jira_issue": issue,
                 "jira_issues": issues,
-                "jira_label_suffix": f"--jira-{issue['key']}",
+                "jira_label_suffix": name_suffix,
+                "pipeline_run_name_suffix": name_suffix,
             }
 
     def report_vars(self, values: dict) -> dict:

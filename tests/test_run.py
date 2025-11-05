@@ -4,6 +4,7 @@ from textwrap import dedent
 from unittest.mock import ANY, Mock, call, patch
 
 from pytest import fixture, mark, raises
+from requests import Session
 from requests.exceptions import HTTPError
 
 from retasc.models.config import parse_config
@@ -16,8 +17,9 @@ from retasc.models.prerequisites.schedule import PrerequisiteSchedule
 from retasc.models.prerequisites.target_date import PrerequisiteTargetDate
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.models.rule import Rule
+from retasc.openshift_client import OpenShiftClient
 from retasc.product_pages_api import ProductPagesScheduleTask
-from retasc.run import run
+from retasc.run import _init_openshift_client, run
 
 from .factory import Factory
 
@@ -1712,3 +1714,36 @@ def test_run_product_pages_kerberos_auth(
     assert [(c.domain, c.name, c.value) for c in session.cookies] == [
         ("pp.example.com", "test", "value")
     ]
+
+
+def test_init_openshift_client_no_url():
+    config = parse_config("examples/config.yaml")
+    config.openshift_api_url = None
+    session = Session()
+
+    result = _init_openshift_client(config, session)
+    assert result is None
+
+
+def test_init_openshift_client_no_token(monkeypatch):
+    monkeypatch.delenv("RETASC_OPENSHIFT_TOKEN", raising=False)
+    config = parse_config("examples/config.yaml")
+    config.openshift_api_url = "https://api.openshift.example.com"
+    session = Session()
+
+    result = _init_openshift_client(config, session)
+    assert result is None
+
+
+def test_init_openshift_client_with_token(monkeypatch):
+    monkeypatch.setenv("RETASC_OPENSHIFT_TOKEN", "test-token")
+    config = parse_config("examples/config.yaml")
+    config.openshift_api_url = "https://api.openshift.example.com"
+    session = Session()
+
+    result = _init_openshift_client(config, session)
+    assert result is not None
+    assert isinstance(result, OpenShiftClient)
+    assert result.api_url == "https://api.openshift.example.com"
+    assert result.token == "test-token"
+    assert result.session is session

@@ -49,12 +49,14 @@ class ProductPagesReleases(InputBase):
         )
         for release in releases:
             major, minor = parse_version(release)
+            name_suffix = f"-{release}"
             data = {
                 "product": self.product,
                 "release": release,
                 "major": major,
                 "minor": minor,
-                "jira_label_suffix": f"-{release}",
+                "jira_label_suffix": name_suffix,
+                "pipeline_run_name_suffix": name_suffix,
             }
             yield data
 
