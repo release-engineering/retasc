@@ -7,8 +7,9 @@ Product Pages (PP).
 
 ## Introduction
 
-ReTaSC is meant to run as a batch job regularly to monitor schedules in PP and
-create or update Jira issues according to custom rules and Jira templates.
+ReTaSC is meant to run as a batch job regularly to monitor schedules in PP,
+create/update Jira issues and run Tekton Pipelines (in a OpenShift/Kubernetes
+cluster) according to custom rules and templates.
 
 ReTaSC creates and manages Jira issues until resolved. This means that if a PP
 schedule or a rule changes, the related unresolved Jira issues are also updated
@@ -22,8 +23,9 @@ and a Product Release (an identifier in PP).
 Rules describe prerequisites to manage a Product Release.
 
 Prerequisites are requirements that enhance template parameters and can block
-Task completion if some conditions are not met. Here are some pre-defined
-prerequisites:
+Task completion if some conditions are not met.
+
+Supported prerequisites:
 
 - PP schedule item name, for example:
   `schedule_task: "GA for rhel {{ major }}.{{ minor }}"`
@@ -32,6 +34,7 @@ prerequisites:
 - reference to other Rule that must be in Completed state
 - Jira issue templates - the issues are created only if none of the previous
   prerequisites are in Pending state
+- Tekton PipelineRun templates - a Tekton Pipeline to run and monitor
 
 Task state can be one of:
 
@@ -98,7 +101,8 @@ prerequisites:
 Using the rule above, ReTaSC would create a Jira issue (and a subtask) after
 `target_date` and update it whenever some fields change in the template.
 
-ReTaSC sets a unique label for the Jira issues, to find it later without
+For each task (rule and a given input), ReTaSC sets a unique label for the Jira
+issues and a unique name for Tekton PipelineRuns, to find them later without
 storing any extra information. The label is constructed using
 "jira_label_prefix" configuration, "jira_issue" from the prerequisite and
 "jira_label_suffix" template variable originating from the Product pages input.
@@ -119,6 +123,27 @@ prerequisites:
     template: "enable-xyz-release.yml.j2"
     fields:
       duedate: "{{ date }}"
+```
+
+### Rule to Run a Tekton Pipeline
+
+```yaml
+name: New Release Configuration
+prerequisites:
+  - schedule_task: Set up new release
+  - target_date: start_date - 1|week
+
+  # Create a tracking Jira issue
+  - jira_issue: new-release
+    template: new-release.yml.j2
+
+  # Wait for the start date
+  - target_date: start_date - 1|day
+
+  # Trigger the PipelineRun
+  - pipeline_run: configure-new-release
+    namespace: releng
+    template: configure-new-release.yml.j2
 ```
 
 ## Templating Engine
@@ -184,6 +209,8 @@ container image:
   `https://jaeger.example.com:4318/v1/traces`
 - `OTEL_EXPORTER_SERVICE_NAME` - service name for OpenTelemetry; if unset
   (default), traces are not exported
+- `RETASC_OPENSHIFT_TOKEN` - OpenShift authentication token; optional; needed
+  with `openshift_api_url` option for `pipeline_run` prerequisite to work
 - `RETASC_PRODUCT_PAGES_COOKIES` - Optional. Path to a cookies file for Product
   Pages authentication using the current Kerberos ticket. If set, this is used
   instead of the OIDC authentication. Create the cookies file using the
