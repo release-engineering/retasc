@@ -13,6 +13,7 @@ from retasc.models.config import Config
 from retasc.models.inputs.base import InputBase
 from retasc.models.parse_rules import parse_rules
 from retasc.models.rule import Rule
+from retasc.openshift_client import OpenShiftClient
 from retasc.product_pages_api import ProductPagesApi
 from retasc.report import Report
 from retasc.requests_session import requests_session
@@ -81,6 +82,45 @@ def oidc_token(oidc_token_url: str, session: Session) -> str:
     return token_response.json()["access_token"]
 
 
+def _init_product_pages_session(config: Config, session: Session) -> Session:
+    """Initialize Product Pages session with authentication."""
+    pp_cookies = os.getenv("RETASC_PRODUCT_PAGES_COOKIES")
+    if pp_cookies:
+        cookiejar = MozillaCookieJar()
+        cookiejar.load(pp_cookies)
+        return requests_session(
+            connect_timeout=config.connect_timeout,
+            read_timeout=config.connect_timeout,
+            cookies=cookiejar,
+        )
+
+    if config.oidc_token_url is not None:
+        pp_session = requests_session(
+            connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
+        )
+        token = oidc_token(config.oidc_token_url, pp_session)
+        pp_session.headers["Authorization"] = f"Bearer {token}"
+        return pp_session
+
+    return session
+
+
+def _init_openshift_client(config: Config, session: Session) -> OpenShiftClient | None:
+    """Initialize OpenShift client if configured."""
+    if not config.openshift_api_url:
+        return None
+
+    openshift_token = os.getenv("RETASC_OPENSHIFT_TOKEN")
+    if not openshift_token:
+        return None
+
+    return OpenShiftClient(
+        api_url=config.openshift_api_url,
+        token=openshift_token,
+        session=session,
+    )
+
+
 def run_helper(
     *,
     config: Config,
@@ -94,23 +134,7 @@ def run_helper(
         connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
     )
 
-    pp_cookies = os.getenv("RETASC_PRODUCT_PAGES_COOKIES")
-    if pp_cookies:
-        cookiejar = MozillaCookieJar()
-        cookiejar.load(pp_cookies)
-        pp_session = requests_session(
-            connect_timeout=config.connect_timeout,
-            read_timeout=config.connect_timeout,
-            cookies=cookiejar,
-        )
-    elif config.oidc_token_url is not None:
-        pp_session = requests_session(
-            connect_timeout=config.connect_timeout, read_timeout=config.connect_timeout
-        )
-        token = oidc_token(config.oidc_token_url, pp_session)
-        pp_session.headers["Authorization"] = f"Bearer {token}"
-    else:
-        pp_session = session
+    pp_session = _init_product_pages_session(config, session)
 
     # Retry also on 401 to workaround for a Jira bug
     # https://github.com/atlassian-api/atlassian-python-api/issues/257
@@ -129,6 +153,8 @@ def run_helper(
         session=jira_session,
     )
     pp = ProductPagesApi(config.product_pages_url, session=pp_session)
+    openshift = _init_openshift_client(config, session)
+
     rules = {
         k: v
         for rule_path in rule_files
@@ -147,6 +173,7 @@ def run_helper(
         template=template,
         report=report,
         config=config,
+        openshift=openshift,
     )
     context.template.env.globals["retasc_context"] = context
 
