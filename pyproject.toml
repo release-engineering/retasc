@@ -30,7 +30,7 @@ retasc = "retasc.__main__:main"
 [project.optional-dependencies]
 dev = [
   "requests-mock>=1.12.1,<2",
-  "pytest>=8.3.3,<9",
+  "pytest>=9.0.1,<10",
   "pytest-cov>=7.0.0,<8",
 ]
 types = [
