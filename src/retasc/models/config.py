@@ -13,6 +13,10 @@ class Config(BaseModel):
     jira_template_path: Path = Field(
         description="Path to a root directory with Jira templates"
     )
+    pipeline_run_template_path: Path = Field(
+        description="Path to a root directory with PipelineRun templates",
+        default=Path("pipeline_runs"),
+    )
     template_extensions: list[Path] = Field(
         description=dedent("""
             List of paths to extensions for templating engine". Each path must
@@ -25,6 +29,22 @@ class Config(BaseModel):
 
     jira_label_prefix: str = Field(
         description="Prefix for labels identifying specific issue in Jira"
+    )
+    pipeline_run_name_prefix: str = Field(
+        description="Prefix for pipeline run names",
+        default="retasc-",
+    )
+    pipeline_run_default_namespace: str | None = Field(
+        description="Default namespace for applying PipelineRuns",
+        default=None,
+    )
+    openshift_api_url: str | None = Field(
+        description="OpenShift cluster API URL",
+        default=None,
+    )
+    openshift_oc_image: str = Field(
+        description="Container image with 'oc' command-line tool",
+        default="quay.io/openshift/origin-cli:latest",
     )
     jira_fields: dict[str, str] = Field(
         description=(
