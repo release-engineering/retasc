@@ -8,12 +8,28 @@ def today():
     return datetime.now(UTC).date()
 
 
+def now():
+    return datetime.now(UTC)
+
+
 def days(value: int) -> timedelta:
     return timedelta(days=value)
 
 
 def weeks(value: int) -> timedelta:
     return timedelta(weeks=value)
+
+
+def hours(value: int) -> timedelta:
+    return timedelta(hours=value)
+
+
+def minutes(value: int) -> timedelta:
+    return timedelta(minutes=value)
+
+
+def seconds(value: int) -> timedelta:
+    return timedelta(seconds=value)
 
 
 def to_date(value: str) -> date:
@@ -32,12 +48,20 @@ GLOBALS = {
     "SATURDAY": 5,
     "SUNDAY": 6,
     "date": to_date,
+    "now": now,
+    "datetime": datetime,
 }
 FILTERS = {
     "days": days,
     "weeks": weeks,
+    "hours": hours,
+    "minutes": minutes,
+    "seconds": seconds,
     "day": days,
     "week": weeks,
+    "hour": hours,
+    "minute": minutes,
+    "second": seconds,
     "date": to_date,
 }
 
