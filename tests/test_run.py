@@ -3,11 +3,13 @@ from datetime import UTC, date, datetime
 from textwrap import dedent
 from unittest.mock import ANY, Mock, call, patch
 
+from jinja2.exceptions import TemplateError
 from pytest import fixture, mark, raises
 from requests import Session
-from requests.exceptions import HTTPError
+from requests.exceptions import ConnectTimeout, HTTPError
 
 from retasc.models.config import parse_config
+from retasc.models.inputs.exceptions import InputValuesError
 from retasc.models.inputs.jira_issues import JiraIssues
 from retasc.models.inputs.product_pages_releases import parse_version
 from retasc.models.inputs.variables import Variables
@@ -963,7 +965,7 @@ def test_run_rule_condition_failed(condition_expr, result, factory):
     }
 
 
-def test_run_rule_template_error(factory):
+def test_run_rule_template_error_in_prerequisite(factory):
     bad_condition = PrerequisiteCondition(condition="bad_template_variable")
     good_condition = PrerequisiteCondition(condition="true")
     rule1 = factory.new_rule(prerequisites=[bad_condition, good_condition])
@@ -1014,6 +1016,45 @@ def test_run_rule_template_error(factory):
     ]
 
 
+def test_run_rule_template_error_in_input(factory):
+    input = Mock(spec=JiraIssues)
+    input.values.side_effect = TemplateError("FAILED")
+    factory.new_rule(inputs=[input])
+    report = call_run()
+    assert report.errors == [
+        dedent("""
+            Mock('')
+              FAILED
+        """).strip()
+    ]
+
+
+def test_run_rule_http_error_in_input(factory):
+    input = Mock(spec=JiraIssues)
+    input.values.side_effect = ConnectTimeout("FAILED")
+    factory.new_rule(inputs=[input])
+    report = call_run()
+    assert report.errors == [
+        dedent("""
+            Mock('')
+              ConnectTimeout('FAILED')
+        """).strip()
+    ]
+
+
+def test_run_rule_input_error(factory):
+    input = Mock(spec=JiraIssues)
+    input.values.side_effect = InputValuesError("FAILED")
+    factory.new_rule(inputs=[input])
+    report = call_run()
+    assert report.errors == [
+        dedent("""
+            Mock('')
+              FAILED
+        """).strip()
+    ]
+
+
 @mark.parametrize(
     "expected_error",
     (
@@ -1027,7 +1068,7 @@ def test_run_rule_template_error(factory):
         },
     ),
 )
-def test_run_rule_http_error(factory, expected_error):
+def test_run_rule_http_error_in_prerequisite(factory, expected_error):
     class DummyPrerequisite(PrerequisiteCondition):
         condition: str = ""
 

@@ -2,10 +2,10 @@
 
 from copy import deepcopy
 
-import jinja2.exceptions
+from jinja2.exceptions import TemplateError
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
-from requests.exceptions import HTTPError
+from requests.exceptions import RequestException
 
 from retasc.models.inputs import Input
 from retasc.models.inputs.product_pages_releases import ProductPagesReleases
@@ -46,23 +46,10 @@ class Rule(BaseModel):
     def _process_prerequisite(self, prereq: Prerequisite, context) -> ReleaseRuleState:
         try:
             return prereq.update_state(context)
-        except HTTPError as e:
-            msg = [repr(e)]
-            if e.response is not None:
-                msg.extend(
-                    [
-                        f"status={e.response.status_code!r}",
-                        f"body={e.response.text!r}",
-                    ]
-                )
-            if e.request is not None:
-                msg.append(f"url={e.request.url!r}")
-            context.report.add_error(" ".join(msg))
+        except RequestException as e:
+            context.report.add_request_error(e)
             return ReleaseRuleState.Pending
-        except (
-            PrerequisiteUpdateStateError,
-            jinja2.exceptions.TemplateError,
-        ) as e:
+        except (PrerequisiteUpdateStateError, TemplateError) as e:
             context.report.add_error(str(e))
             return ReleaseRuleState.Pending
 

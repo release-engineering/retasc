@@ -5,12 +5,15 @@ import os
 from collections.abc import Iterator
 from http.cookiejar import MozillaCookieJar
 
+from jinja2.exceptions import TemplateError
 from opentelemetry import trace
 from requests import Session
+from requests.exceptions import RequestException
 
 from retasc.jira_client import DryRunJiraClient, JiraClient
 from retasc.models.config import Config
 from retasc.models.inputs.base import InputBase
+from retasc.models.inputs.exceptions import InputValuesError
 from retasc.models.parse_rules import parse_rules
 from retasc.models.rule import Rule
 from retasc.openshift_client import OpenShiftClient
@@ -24,6 +27,20 @@ logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
+def get_inputs(input, context: RuntimeContext) -> list:
+    try:
+        return list(input.values(context))
+    except RequestException as e:
+        section = type(input).__name__
+        with context.report.section("inputs", type=section, name=""):
+            context.report.add_request_error(e)
+    except (InputValuesError, TemplateError) as e:
+        section = type(input).__name__
+        with context.report.section("inputs", type=section, name=""):
+            context.report.add_error(str(e))
+    return []
+
+
 def rules_by_input(context: RuntimeContext) -> list[tuple[InputBase, dict, list[Rule]]]:
     result: dict[str, tuple[InputBase, dict, list[Rule]]] = {}
     input_values_cache: dict[str, list[dict]] = {}
@@ -33,7 +50,7 @@ def rules_by_input(context: RuntimeContext) -> list[tuple[InputBase, dict, list[
             cache_key = input.model_dump_json()
             input_values = input_values_cache.get(cache_key)
             if input_values is None:
-                input_values = list(input.values(context))
+                input_values = get_inputs(input, context)
                 input_values_cache[cache_key] = input_values
 
             for values in input_values:
