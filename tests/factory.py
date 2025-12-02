@@ -17,10 +17,13 @@ class Factory:
         self.tmpdir = tmpdir
         self.rules_dict = rules_dict
 
-    def new_rule(self, *, name=None, prerequisites=[], **kwargs):
+    def new_rule(self, *, name=None, prerequisites=None, **kwargs):
         if name is None:
             self.last_rule_id += 1
             name = f"test_rule_{self.last_rule_id}"
+
+        if prerequisites is None:
+            prerequisites = []
 
         rule = Rule(
             name=name,

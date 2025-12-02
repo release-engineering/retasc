@@ -146,6 +146,90 @@ prerequisites:
     template: configure-new-release.yml.j2
 ```
 
+### Rule to Process Items from HTTP API
+
+The following rule fetches data from an HTTP API and creates a task for each item:
+
+```yaml
+name: Process Pending Builds from API
+inputs:
+  # Make an HTTP request and iterate over items in the JSON response
+  - http:
+      url: "https://api.example.com/builds"
+      method: GET
+      params:
+        status: pending
+        limit: 100
+      # Extract array from nested JSON response using template expression
+      # If the API returns: {"data": {"builds": [...]}}
+      inputs: "http_data.data.builds"
+
+prerequisites:
+  # Skip builds that don't meet certain criteria
+  - condition: "http_item.priority >= 5"
+
+  # Create a Jira issue for each build
+  - jira_issue: process-build
+    template: "process-build.yml.j2"
+    fields:
+      summary: "Process build {{ http_item.name }} ({{ http_item.version }})"
+      description: |
+        Build ID: {{ http_item.id }}
+        Priority: {{ http_item.priority }}
+        Status: {{ http_item.status }}
+```
+
+The HTTP input provides the following template variables for each item:
+- `http_item` - the current item from the JSON array
+- `http_item_index` - the index of the current item (0-based)
+- `http_response` - the full HTTP response object
+- `http_data` - the parsed JSON response (useful in `inputs`)
+
+The `inputs` supports various expressions:
+- Simple key: `http_data.results`
+- Nested access: `http_data.response.data.items`
+- Bracket notation: `http_data['results']`
+- Dynamic keys: `http_data[array_key]` (where `array_key` is a template variable)
+
+### Rule to Process Old GitLab Merge Requests
+
+The following rule monitors open merge requests on a GitLab server and creates
+tracking issues for merge requests that have been open for more than 1 day:
+
+```yaml
+name: Review Stale Merge Requests
+inputs:
+  - http:
+      url: "https://gitlab.example.com/api/v4/project/hello%2fworld/merge_requests"
+      method: GET
+      params:
+        state: opened
+        scope: all
+        author_username: retasc_bot
+        created_before: "{{ now() - 1d }}"
+        # no draft MRs
+        wip: "no"
+      # NOTE: Passing tokens to rules is not supported yet. This would require
+      #       using a safer storage than the configuration file.
+      # headers:
+      #   PRIVATE-TOKEN: "{{ config.gitlab_token }}"
+
+prerequisites:
+  # Create a tracking Jira issue for review
+  - jira_issue: review-stale-mr
+    template: "gitlab/review-stale-mr.yml.j2"
+    fields:
+      summary: "Review stale MR: {{ http_item.title }}"
+      description: |
+        Merge Request: {{ http_item.web_url }}
+        Created: {{ http_item.created_at }}
+        Project: {{ http_item.references.full }}
+
+        This merge request has been open for {{ (today - date(http_item.created_at[:10])).days }} days.
+      labels:
+        - stale-merge-request
+```
+
 ## Templating Engine
 
 Some variable and files are evaluated by Jinja2 templating engine.
