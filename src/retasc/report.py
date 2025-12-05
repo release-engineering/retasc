@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 
 from opentelemetry import trace
+from requests.exceptions import RequestException
 
 tracer = trace.get_tracer(__name__)
 
@@ -50,5 +51,18 @@ class Report:
     def add_error(self, error: str):
         self.set("error", f"❌ {error}")
         label = "\n".join(f"{'  ' * i}{s}" for i, s in enumerate(self.current_sections))
-        indent = "   " * (len(self.current_sections) - 1)
+        indent = "  " * len(self.current_sections)
         self.errors.append(f"{label}\n{indent}{error}")
+
+    def add_request_error(self, e: RequestException):
+        msg = [repr(e)]
+        if e.response is not None:
+            msg.extend(
+                [
+                    f"status={e.response.status_code!r}",
+                    f"body={e.response.text!r}",
+                ]
+            )
+        if e.request is not None:
+            msg.append(f"url={e.request.url!r}")
+        self.add_error(" ".join(msg))
