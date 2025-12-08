@@ -25,7 +25,7 @@ include:
 
 unittests:
   image:
-    name: quay.io/fedora/python-313:latest@sha256:fd69a52e38cc8c2503294b3488a294b7db516647af738bd638a9737c72c1022d
+    name: quay.io/fedora/python-313:latest@sha256:48736b24fdc426d7e2c29ace0bd3cf14a3c6af500a7ee8b25aad14cff98385ef
   stage: test
   script:
     - pip install tox
