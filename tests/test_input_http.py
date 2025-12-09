@@ -227,10 +227,7 @@ def test_http_input_report_vars(mock_context, requests_mock):
     values = list(http_input.values(mock_context))
 
     report_vars = http_input.report_vars(values[0])
-    assert report_vars == {
-        "http_item": {"id": 1, "name": "item1"},
-        "http_item_index": 0,
-    }
+    assert report_vars == {"url": url, "http_item_index": 0}
 
 
 def test_http_input_http_error(mock_context, requests_mock):
