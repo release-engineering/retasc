@@ -34,9 +34,8 @@ class Http(HttpBase, InputBase):
         default="http_data",
     )
 
-    def _make_request(self, context):
+    def _make_request(self, url: str, context):
         """Make HTTP request and return the response."""
-        url = context.template.render(self.url)
         headers = render_template_dict(self.headers, context)
         params = render_template_dict(self.params, context)
         data = render_templates(self.data, context)
@@ -64,11 +63,13 @@ class Http(HttpBase, InputBase):
         return items
 
     def values(self, context) -> Iterator[dict]:
-        response = self._make_request(context)
+        url = context.template.render(self.url)
+        response = self._make_request(url, context)
         items = self._extract_items(response, context)
 
         for index, item in enumerate(items):
             yield {
+                "url": url,
                 "http_item": item,
                 "http_response": response,
                 "http_item_index": index,
@@ -76,6 +77,6 @@ class Http(HttpBase, InputBase):
 
     def report_vars(self, values: dict) -> dict:
         return {
-            "http_item": values.get("http_item"),
+            "url": self.url,
             "http_item_index": values.get("http_item_index"),
         }
