@@ -154,15 +154,14 @@ The following rule fetches data from an HTTP API and creates a task for each ite
 name: Process Pending Builds from API
 inputs:
   # Make an HTTP request and iterate over items in the JSON response
-  - http:
-      url: "https://api.example.com/builds"
-      method: GET
-      params:
-        status: pending
-        limit: 100
-      # Extract array from nested JSON response using template expression
-      # If the API returns: {"data": {"builds": [...]}}
-      inputs: "http_data.data.builds"
+  - url: "https://api.example.com/builds"
+    method: GET
+    params:
+    status: pending
+    limit: 100
+    # Extract array from nested JSON response using template expression
+    # If the API returns: {"data": {"builds": [...]}}
+    inputs: "http_data.data.builds"
 
 prerequisites:
   # Skip builds that don't meet certain criteria
@@ -199,23 +198,24 @@ tracking issues for merge requests that have been open for more than 1 day:
 ```yaml
 name: Review Stale Merge Requests
 inputs:
-  - http:
-      url: "https://gitlab.example.com/api/v4/project/hello%2fworld/merge_requests"
-      method: GET
-      params:
-        state: opened
-        scope: all
-        author_username: retasc_bot
-        created_before: "{{ now() - 1d }}"
-        # no draft MRs
-        wip: "no"
-      # NOTE: Passing tokens to rules is not supported yet. This would require
-      #       using a safer storage than the configuration file.
-      # headers:
-      #   PRIVATE-TOKEN: "{{ config.gitlab_token }}"
+  - url: "https://gitlab.example.com/api/v4/projects/hello%2fworld/merge_requests"
+    method: GET
+    params:
+      state: opened
+      scope: all
+      author_username: retasc_bot
+      created_before: "{{ now() - 1|day }}"
+      # no draft MRs
+      wip: "no"
+    # NOTE: Passing tokens to rules is not supported yet. This would require
+    #       using a safer storage than the configuration file.
+    # headers:
+    #   PRIVATE-TOKEN: "{{ config.gitlab_token }}"
 
 prerequisites:
   # Create a tracking Jira issue for review
+  - variable: jira_label_suffix
+    string: "-{{ http_item.iid }}"
   - jira_issue: review-stale-mr
     template: "gitlab/review-stale-mr.yml.j2"
     fields:
