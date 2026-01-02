@@ -18,7 +18,7 @@ dependencies = [
   "pydantic>=2.11.7,<3",
   "atlassian-python-api>=4.0.7,<5",
   "Jinja2>=3.1.6,<4",
-  "ruamel-yaml>=0.18.14,<0.19",
+  "ruamel-yaml>=0.18.14,<0.20",
 ]
 
 [project.urls]
