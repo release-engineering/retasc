@@ -9,9 +9,6 @@ variables:
   COVERAGE_XML: coverage.xml
   JUNIT_XML: report.xml
 
-default:
-  tags: [shared-podman]
-
 workflow:
   rules:
     # Avoid running CI on automated dependency updates (often partial)
@@ -20,6 +17,9 @@ workflow:
 # code-scanning-container
 # Requires SONAR_TOKEN variable in GitLab project.
 include:
+  - project: rhelwfautomation/rhelwf-images
+    file: gitlab-ci-runner-tag.yaml
+    ref: main
   - project: security-guild/code-scanning-container
     file: code_scanning-gitlab-ci.yml
 
@@ -42,6 +42,10 @@ unittests:
         path: $COVERAGE_XML
 
 sonarqube-scan-sast:
+  variables:
+    # Larger memory requirements for Java/SonarQube
+    KUBERNETES_MEMORY_REQUEST: "2Gi"
+    KUBERNETES_MEMORY_LIMIT: "2Gi"
   stage: sonarqube
   needs:
     - unittests
