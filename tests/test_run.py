@@ -29,7 +29,7 @@ DUMMY_ISSUE = """
 summary: test
 """
 DUMMY_ISSUE_FIELDS = {"summary": "test"}
-INPUT = "ProductPagesReleases('rhel-10.0')"
+RULE_INPUT = "ProductPagesReleases('rhel-10.0')"
 
 
 def call_run(*, oidc_token_url: str | None = None, additional_jira_fields: dict = {}):
@@ -111,12 +111,12 @@ def test_run_rule_update_state_once(factory, mock_pp):
         prerequisites=[PrerequisiteRule(rule=rule_dependency.name)]
     )
     report = call_run()
-    inputs = ("rhel-9.0", "rhel-10.0")
+    releases = ("rhel-9.0", "rhel-10.0")
     assert report.data == {
         "inputs": [
             {
                 "type": "ProductPagesReleases",
-                "release": input,
+                "release": release,
                 "rules": [
                     {
                         "rule": rule_dependency.name,
@@ -145,7 +145,7 @@ def test_run_rule_update_state_once(factory, mock_pp):
                     },
                 ],
             }
-            for i, input in enumerate(inputs, start=1)
+            for i, release in enumerate(releases, start=1)
         ]
     }
     assert len(condition_prereq.update_state.mock_calls) == 2
@@ -1008,7 +1008,7 @@ def test_run_rule_template_error_in_prerequisite(factory):
     }
     assert report.errors == [
         dedent(f"""
-            {INPUT}
+            {RULE_INPUT}
               Rule({rule1.name!r})
                 Condition('bad_template_variable')
                   {expected_error}
@@ -1017,9 +1017,9 @@ def test_run_rule_template_error_in_prerequisite(factory):
 
 
 def test_run_rule_template_error_in_input(factory):
-    input = Mock(spec=JiraIssues)
-    input.values.side_effect = TemplateError("FAILED")
-    factory.new_rule(inputs=[input])
+    rule_inputs = Mock(spec=JiraIssues)
+    rule_inputs.values.side_effect = TemplateError("FAILED")
+    factory.new_rule(inputs=[rule_inputs])
     report = call_run()
     assert report.errors == [
         dedent("""
@@ -1030,9 +1030,9 @@ def test_run_rule_template_error_in_input(factory):
 
 
 def test_run_rule_http_error_in_input(factory):
-    input = Mock(spec=JiraIssues)
-    input.values.side_effect = ConnectTimeout("FAILED")
-    factory.new_rule(inputs=[input])
+    rule_inputs = Mock(spec=JiraIssues)
+    rule_inputs.values.side_effect = ConnectTimeout("FAILED")
+    factory.new_rule(inputs=[rule_inputs])
     report = call_run()
     assert report.errors == [
         dedent("""
@@ -1043,9 +1043,9 @@ def test_run_rule_http_error_in_input(factory):
 
 
 def test_run_rule_input_error(factory):
-    input = Mock(spec=JiraIssues)
-    input.values.side_effect = InputValuesError("FAILED")
-    factory.new_rule(inputs=[input])
+    rule_inputs = Mock(spec=JiraIssues)
+    rule_inputs.values.side_effect = InputValuesError("FAILED")
+    factory.new_rule(inputs=[rule_inputs])
     report = call_run()
     assert report.errors == [
         dedent("""
@@ -1105,7 +1105,7 @@ def test_run_rule_http_error_in_prerequisite(factory, expected_error):
     }
     assert report.errors == [
         dedent(f"""
-            {INPUT}
+            {RULE_INPUT}
               Rule({rule.name!r})
                 Dummy('')
                   {expected_error["msg"]}
