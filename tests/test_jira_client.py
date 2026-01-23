@@ -121,3 +121,52 @@ def test_timeout(requests_mock):
         assert len(mock_request.mock_calls) == 1
         _name, _args, kwargs = mock_request.mock_calls[0]
         assert kwargs.get("timeout") is None, kwargs
+
+
+def test_add_comment(jira_api, requests_mock):
+    comment_text = "Test comment"
+    expected_response = {"id": "12345", "body": comment_text}
+    requests_mock.post(
+        f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/comment", json=expected_response
+    )
+    resp = jira_api.add_comment(ISSUE_KEY, comment_text)
+    assert resp == expected_response
+
+
+def test_add_comment_dryrun(dryrun_jira_api, requests_mock):
+    comment_text = "Test comment"
+    resp = dryrun_jira_api.add_comment(ISSUE_KEY, comment_text)
+    assert resp == {"id": "1", "body": comment_text}
+    assert len(requests_mock.request_history) == 0
+
+
+def test_get_issue_comments(jira_api, requests_mock):
+    expected_response = {
+        "comments": [
+            {"id": "1", "body": "First comment"},
+            {"id": "2", "body": "Second comment"},
+        ]
+    }
+    requests_mock.get(
+        f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/comment", json=expected_response
+    )
+    resp = jira_api.get_issue_comments(ISSUE_KEY)
+    assert resp == expected_response
+
+
+def test_get_issue_comments_dryrun(dryrun_jira_api, requests_mock):
+    resp = dryrun_jira_api.get_issue_comments(ISSUE_KEY)
+    assert resp == {"comments": []}
+    assert len(requests_mock.request_history) == 0
+
+
+def test_unexpected_response_add_comment(jira_api, requests_mock):
+    requests_mock.post(f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/comment", json=[])
+    with raises(RuntimeError, match=r"Unexpected response: \[\]"):
+        jira_api.add_comment(ISSUE_KEY, "Test comment")
+
+
+def test_unexpected_response_get_issue_comments(jira_api, requests_mock):
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/comment", json=[])
+    with raises(RuntimeError, match=r"Unexpected response: \[\]"):
+        jira_api.get_issue_comments(ISSUE_KEY)
