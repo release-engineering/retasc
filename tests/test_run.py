@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from datetime import UTC, date, datetime
 from textwrap import dedent
-from unittest.mock import ANY, Mock, call, patch
+from unittest.mock import ANY, Mock, PropertyMock, call, patch
 
 from jinja2.exceptions import TemplateError
 from pytest import fixture, mark, raises
@@ -653,6 +653,26 @@ def test_run_rule_jira_issue_update_complex_field(factory, mock_jira):
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once()
+
+
+def test_run_rule_jira_issue_assignee_current_user(factory, mock_jira):
+    """Test assigning issue to current user via template variable"""
+    type(mock_jira).current_user_key = PropertyMock(return_value="retasc-bot")
+
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        """
+        summary: Test issue
+        assignee:
+          key: "{{ jira.current_user_key }}"
+        """
+    )
+    factory.new_rule(prerequisites=[jira_issue_prereq])
+
+    call_run(additional_jira_fields={"assignee": "assignee"})
+
+    mock_jira.create_issue.assert_called_once()
+    call_args = mock_jira.create_issue.call_args[0][0]
+    assert call_args["assignee"] == {"key": "retasc-bot"}
 
 
 def test_run_rule_jira_issue_skip_update_user_modified_fields(factory, mock_jira):

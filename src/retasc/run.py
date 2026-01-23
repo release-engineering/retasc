@@ -200,6 +200,7 @@ def run_helper(
             context.template.params["config"] = context.config
             context.template.params["report"] = context.report.data
             context.template.params["jira_issues"] = context.report.jira_issues
+            context.template.params["jira"] = context.jira
             update_state(rule, context)
 
     return report
