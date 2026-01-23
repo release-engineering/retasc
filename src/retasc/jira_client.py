@@ -116,6 +116,36 @@ class JiraClient:
 
         raise RuntimeError(f"Unexpected response: {data}")
 
+    @tracer.start_as_current_span("JiraClient.add_comment")
+    def add_comment(self, issue_key: str, comment: str) -> dict:
+        """
+        Add a comment to a Jira issue.
+
+        :param issue_key: The key of the Jira issue to comment on.
+        :param comment: The comment text to add.
+        :return: dict containing the comment metadata (id, body, etc.)
+        """
+        logger.info("Adding comment to Jira issue %r", issue_key)
+        data = self.jira.issue_add_comment(issue_key, comment)
+        if isinstance(data, dict):
+            return data
+
+        raise RuntimeError(f"Unexpected response: {data!r}")
+
+    @tracer.start_as_current_span("JiraClient.get_issue_comments")
+    def get_issue_comments(self, issue_key: str) -> dict:
+        """
+        Get all comments from a Jira issue.
+
+        :param issue_key: The key of the Jira issue.
+        :return: dict with structure: {"comments": [...]}
+        """
+        data = self.jira.issue_get_comments(issue_key)
+        if isinstance(data, dict):
+            return data
+
+        raise RuntimeError(f"Unexpected response: {data!r}")
+
 
 class DryRunJiraClient(JiraClient):
     def edit_issue(
@@ -127,3 +157,11 @@ class DryRunJiraClient(JiraClient):
     def create_issue(self, fields: dict) -> dict:
         # Skip creating issues in dry-run mode and return dummy data.
         return {"key": "DRYRUN", "fields": {"resolution": None, **fields}}
+
+    def add_comment(self, issue_key: str, comment: str) -> dict:
+        # Skip adding comments in dry-run mode and return dummy data.
+        return {"id": "1", "body": comment}
+
+    def get_issue_comments(self, issue_key: str) -> dict:
+        # Skip fetching comments in dry-run mode and return empty list.
+        return {"comments": []}
