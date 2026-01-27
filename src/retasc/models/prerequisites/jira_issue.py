@@ -166,53 +166,38 @@ def _render_issue_template(
     return _template_to_issue_data(template_data, context)
 
 
-def _update_issue(
-    jira_issue_id: str,
-    template: str | None,
-    jira_fields: dict[str, Any],
-    must_exist: bool,
-    context,
-    parent_issue_key: str | None = None,
-) -> dict | None:
+def _has_comment(issue_key: str, comment_text: str, context) -> bool:
     """
-    Create and update Jira issue if needed.
+    Check if a comment with exact text already exists on the issue.
 
-    The issue is updated according to the template.
-
-    Returns the managed Jira issue.
+    Returns True if the exact comment text is found, False otherwise.
     """
-    fields = _render_issue_template(template, jira_fields, context)
+    response = context.jira.get_issue_comments(issue_key)
+    comments = response.get("comments", [])
+    return any(comment.get("body") == comment_text for comment in comments)
 
-    if parent_issue_key is not None:
-        fields["parent"] = {"key": parent_issue_key}
 
-    supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
-    label = f"{context.config.jira_label_prefix}{jira_issue_id}{context.template.params['jira_label_suffix']}"
-    jql = f"labels={json.dumps(label)}"
-    issues = context.jira.search_issues(jql=jql, fields=sorted(supported_fields))
+def _add_issue_comment(issue_key: str, comment_template: str, context) -> None:
+    """
+    Add a comment to a Jira issue unless a comment with the same text exists.
+    """
+    comment = context.template.render(comment_template)
+    if _has_comment(issue_key, comment, context):
+        context.report.set("comment_status", "skipped_duplicate")
+        return
 
-    if issues:
-        if len(issues) > 1:
-            keys = to_comma_separated(issue["key"] for issue in issues)
-            raise PrerequisiteUpdateStateError(
-                f"Found multiple issues with the same ID label {label!r}: {keys}"
-            )
+    context.jira.add_comment(issue_key, comment)
+    context.report.set("comment_status", "added")
 
-        issue = issues[0]
 
-        if not _is_resolved(issue):
-            _edit_issue(issue, fields, context, label=label)
-    elif must_exist:
-        return None
-    else:
-        issue = _create_issue(fields, context, label=label)
-        issue["fields"] = {"resolution": None, **fields}
+def _get_single_issue_or_raise(issues: list[dict], label: str) -> dict:
+    if len(issues) != 1:
+        keys = to_comma_separated(issue["key"] for issue in issues)
+        raise PrerequisiteUpdateStateError(
+            f"Expected single issue labeled {label!r}, found: {keys}"
+        )
 
-    issue["fields"] = {
-        context.config.from_jira_field_name(f): v for f, v in issue["fields"].items()
-    }
-    _report_jira_issue(issue, jira_issue_id, context)
-    return issue
+    return issues[0]
 
 
 class JiraIssueTemplate(PrerequisiteBase):
@@ -226,6 +211,68 @@ class JiraIssueTemplate(PrerequisiteBase):
             " only updated if it exists."
         ),
     )
+    comment: str | None = Field(
+        default=None,
+        description=(
+            "Optional comment template to add to the Jira issue. "
+            "Comment is only added if the issue in not resolved "
+            "and a comment with the same text does not exist already."
+        ),
+    )
+
+    def _update_issue_data(
+        self,
+        issue: dict,
+        *,
+        label: str,
+        fields: dict[str, Any],
+        context,
+    ):
+        if not _is_resolved(issue):
+            _edit_issue(issue, fields, context, label=label)
+            if self.comment is not None:
+                _add_issue_comment(issue["key"], self.comment, context)
+
+    def _update_issue(
+        self,
+        jira_issue_id: str,
+        context,
+        parent_issue_key: str | None = None,
+    ) -> dict | None:
+        """
+        Create and update Jira issue if needed.
+
+        The issue is updated according to the template.
+
+        Returns the managed Jira issue.
+        """
+        fields = _render_issue_template(self.template, self.fields, context)
+
+        if parent_issue_key is not None:
+            fields["parent"] = {"key": parent_issue_key}
+
+        supported_fields = JIRA_REQUIRED_FIELDS.union(fields.keys())
+        label = f"{context.config.jira_label_prefix}{jira_issue_id}{context.template.params['jira_label_suffix']}"
+        jql = f"labels={json.dumps(label)}"
+        issues = context.jira.search_issues(jql=jql, fields=sorted(supported_fields))
+
+        if issues:
+            issue = _get_single_issue_or_raise(issues, label)
+            self._update_issue_data(issue, label=label, fields=fields, context=context)
+        elif self.must_exist:
+            return None
+        else:
+            issue = _create_issue(fields, context, label=label)
+            issue["fields"] = {"resolution": None, **fields}
+            if self.comment is not None:
+                _add_issue_comment(issue["key"], self.comment, context)
+
+        issue["fields"] = {
+            context.config.from_jira_field_name(f): v
+            for f, v in issue["fields"].items()
+        }
+        _report_jira_issue(issue, jira_issue_id, context)
+        return issue
 
 
 class PrerequisiteJiraIssue(JiraIssueTemplate):
@@ -293,12 +340,11 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
         context.template.params["jira_template_file"] = self.template
         jira_issue_id = context.template.render(self.jira_issue)
         context.report.set("jira_issue", jira_issue_id)
-        issue = _update_issue(
-            jira_issue_id, self.template, self.fields, self.must_exist, context
-        )
+        issue = self._update_issue(jira_issue_id, context=context)
         if issue is None:
             return ReleaseRuleState.InProgress
         context.template.params["jira_issue"] = issue
+
         if _is_resolved(issue):
             return ReleaseRuleState.Completed
 
@@ -306,11 +352,8 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
             subtask_id = context.template.render(subtask.jira_issue)
             with context.report.section("subtasks", type="Subtask", name=subtask_id):
                 context.report.set("jira_issue", subtask_id)
-                _update_issue(
+                subtask._update_issue(
                     subtask_id,
-                    subtask.template,
-                    subtask.fields,
-                    subtask.must_exist,
                     context,
                     parent_issue_key=issue["key"],
                 )

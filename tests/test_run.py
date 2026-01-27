@@ -450,8 +450,9 @@ def test_run_rule_jira_issue_not_unique(factory, mock_jira):
     ]
 
     expected_error = (
-        "❌ Found multiple issues with the same ID label"
-        " 'retasc-id-test_jira_template_1-rhel-10.0': 'TEST-1', 'TEST-2'"
+        "❌ Expected single issue labeled"
+        " 'retasc-id-test_jira_template_1-rhel-10.0', found:"
+        " 'TEST-1', 'TEST-2'"
     )
     report = call_run()
     assert report.data == {
