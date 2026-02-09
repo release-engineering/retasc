@@ -107,7 +107,7 @@ def _run(args):
     jira_username = os.environ.get("RETASC_JIRA_USERNAME")
     config = get_config()
     run_fn = run if args.command == "run" else dry_run
-    rule_files = args.rule_files if args.rule_files else [config.rules_path]
+    rule_files = args.rule_files or [config.rules_path]
     report = run_fn(
         config=config,
         rule_files=rule_files,
