@@ -5,7 +5,7 @@ Production Pages API
 
 from dataclasses import dataclass
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 from functools import cache
 
 from opentelemetry import trace
@@ -14,7 +14,7 @@ from requests import Session
 tracer = trace.get_tracer(__name__)
 
 
-class Phase(str, Enum):
+class Phase(StrEnum):
     """Available Product Pages release phases."""
 
     CONCEPT = "Concept"
