@@ -132,6 +132,82 @@ class JiraClient:
 
         raise RuntimeError(f"Unexpected response: {data!r}")
 
+    @tracer.start_as_current_span("JiraClient.get_issue_transitions")
+    def get_issue_transitions(self, issue_key: str) -> list[dict]:
+        """
+        Get available transitions for a Jira issue.
+
+        :param issue_key: The key of the Jira issue.
+        :return: list of dicts with keys: name, id, to
+        """
+        data = self.jira.get_issue_transitions(issue_key)
+        if isinstance(data, list):
+            return data
+
+        raise RuntimeError(f"Unexpected response: {data!r}")
+
+    @staticmethod
+    def _find_transition(transitions: list[dict], status: str) -> dict | None:
+        """Find a transition targeting the given status (case-insensitive)."""
+        status_lower = status.lower()
+        return next((t for t in transitions if t["to"].lower() == status_lower), None)
+
+    @staticmethod
+    def _find_unvisited_transition(
+        transitions: list[dict], visited: set[str]
+    ) -> dict | None:
+        """Find the first transition to an unvisited status."""
+        return next((t for t in transitions if t["to"].lower() not in visited), None)
+
+    @tracer.start_as_current_span("JiraClient.set_issue_status")
+    def set_issue_status(
+        self, issue_key: str, desired_status: str, max_transitions: int = 10
+    ) -> None:
+        """
+        Transition a Jira issue to the desired status via greedy DFS.
+
+        Traverses intermediate statuses if the desired status is not directly
+        reachable from the current status.
+
+        :param issue_key: The key of the Jira issue.
+        :param desired_status: The target status name (case-insensitive).
+        :param max_transitions: Maximum number of transitions to attempt.
+        :raises RuntimeError: If the desired status is unreachable.
+        """
+        visited: set[str] = set()
+        for _ in range(max_transitions):
+            transitions = self.get_issue_transitions(issue_key)
+
+            direct = self._find_transition(transitions, desired_status)
+            if direct is not None:
+                logger.info(
+                    "Transitioning %r to %r via %r",
+                    issue_key,
+                    desired_status,
+                    direct["name"],
+                )
+                self.jira.set_issue_status_by_transition_id(issue_key, direct["id"])
+                return
+
+            next_transition = self._find_unvisited_transition(transitions, visited)
+            if next_transition is None:
+                break
+
+            visited.add(next_transition["to"].lower())
+            logger.info(
+                "Transitioning %r to intermediate status %r via %r",
+                issue_key,
+                next_transition["to"],
+                next_transition["name"],
+            )
+            self.jira.set_issue_status_by_transition_id(
+                issue_key, next_transition["id"]
+            )
+
+        raise RuntimeError(
+            f"Cannot reach status {desired_status!r} for issue {issue_key}"
+        )
+
     @tracer.start_as_current_span("JiraClient.get_issue_comments")
     def get_issue_comments(self, issue_key: str) -> dict:
         """
@@ -161,6 +237,16 @@ class DryRunJiraClient(JiraClient):
     def add_comment(self, issue_key: str, comment: str) -> dict:
         # Skip adding comments in dry-run mode and return dummy data.
         return {"id": "1", "body": comment}
+
+    def get_issue_transitions(self, issue_key: str) -> list[dict]:
+        # Skip fetching transitions in dry-run mode and return empty list.
+        return []
+
+    def set_issue_status(
+        self, issue_key: str, desired_status: str, max_transitions: int = 10
+    ) -> None:
+        # Skip transitioning issues in dry-run mode.
+        pass
 
     def get_issue_comments(self, issue_key: str) -> dict:
         # Skip fetching comments in dry-run mode and return empty list.

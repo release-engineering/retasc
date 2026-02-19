@@ -29,7 +29,7 @@ TEMPLATE_PATH_DESCRIPTION = (
     ' relative to the "jira_template_path" configuration.'
 )
 FIELDS_DESCRIPTION = "Jira fields, override fields in the template"
-JIRA_REQUIRED_FIELDS = frozenset(["labels", "resolution"])
+JIRA_REQUIRED_FIELDS = frozenset(["labels", "resolution", "status"])
 
 
 def _is_resolved(issue: dict) -> bool:
@@ -190,6 +190,28 @@ def _add_issue_comment(issue_key: str, comment_template: str, context) -> None:
     context.report.set("comment_status", "added")
 
 
+def _update_issue_status(issue: dict, status_template: str, context) -> None:
+    """
+    Transition a Jira issue to the desired status if needed.
+
+    :param issue: The Jira issue dict.
+    :param status_template: Jinja2 template for the desired status.
+    :param context: The execution context.
+    :raises PrerequisiteUpdateStateError: If the desired status is unreachable.
+    """
+    desired_status = context.template.render(status_template)
+    current_status = issue["fields"].get("status", {}).get("name", "")
+    if current_status.lower() == desired_status.lower():
+        return
+
+    try:
+        context.jira.set_issue_status(issue["key"], desired_status)
+    except RuntimeError as e:
+        raise PrerequisiteUpdateStateError(str(e)) from e
+
+    context.report.set("status_transition", desired_status)
+
+
 def _get_single_issue_or_raise(issues: list[dict], label: str) -> dict:
     if len(issues) != 1:
         keys = to_comma_separated(issue["key"] for issue in issues)
@@ -217,6 +239,13 @@ class JiraIssueTemplate(PrerequisiteBase):
             "Optional comment template to add to the Jira issue. "
             "Comment is only added if the issue in not resolved "
             "and a comment with the same text does not exist already."
+        ),
+    )
+    status: str | None = Field(
+        default=None,
+        description=(
+            "Optional Jinja2 template for the desired Jira issue status. "
+            "If set, the issue will be transitioned to this status."
         ),
     )
 
@@ -266,6 +295,9 @@ class JiraIssueTemplate(PrerequisiteBase):
             issue["fields"] = {"resolution": None, **fields}
             if self.comment is not None:
                 _add_issue_comment(issue["key"], self.comment, context)
+
+        if self.status is not None:
+            _update_issue_status(issue, self.status, context)
 
         issue["fields"] = {
             context.config.from_jira_field_name(f): v

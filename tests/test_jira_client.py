@@ -170,3 +170,127 @@ def test_unexpected_response_get_issue_comments(jira_api, requests_mock):
     requests_mock.get(f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/comment", json=[])
     with raises(RuntimeError, match=r"Unexpected response: \[\]"):
         jira_api.get_issue_comments(ISSUE_KEY)
+
+
+TRANSITIONS_URL = f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/transitions"
+
+TRANSITIONS_RESPONSE = {
+    "transitions": [
+        {"id": "11", "name": "Start Progress", "to": {"name": "In Progress"}},
+        {"id": "21", "name": "Close", "to": {"name": "Closed"}},
+    ]
+}
+
+
+def test_get_issue_transitions(jira_api, requests_mock):
+    requests_mock.get(TRANSITIONS_URL, json=TRANSITIONS_RESPONSE)
+    result = jira_api.get_issue_transitions(ISSUE_KEY)
+    assert result == [
+        {"name": "Start Progress", "id": 11, "to": "In Progress"},
+        {"name": "Close", "id": 21, "to": "Closed"},
+    ]
+
+
+def test_get_issue_transitions_dryrun(dryrun_jira_api, requests_mock):
+    result = dryrun_jira_api.get_issue_transitions(ISSUE_KEY)
+    assert result == []
+    assert len(requests_mock.request_history) == 0
+
+
+def test_set_issue_status_direct(jira_api, requests_mock):
+    """Direct transition when desired status is immediately reachable."""
+    requests_mock.get(TRANSITIONS_URL, json=TRANSITIONS_RESPONSE)
+    requests_mock.post(TRANSITIONS_URL, status_code=204)
+    jira_api.set_issue_status(ISSUE_KEY, "Closed")
+    posts = [r for r in requests_mock.request_history if r.method == "POST"]
+    assert len(posts) == 1
+    assert posts[0].json() == {"transition": {"id": 21}}
+
+
+def test_set_issue_status_multi_step(jira_api, requests_mock):
+    """Two-step traversal to reach the desired status."""
+    step1_transitions = {
+        "transitions": [
+            {"id": "11", "name": "Start Progress", "to": {"name": "In Progress"}},
+        ]
+    }
+    step2_transitions = {
+        "transitions": [
+            {"id": "31", "name": "Resolve", "to": {"name": "Resolved"}},
+        ]
+    }
+    requests_mock.get(
+        TRANSITIONS_URL, [{"json": step1_transitions}, {"json": step2_transitions}]
+    )
+    requests_mock.post(TRANSITIONS_URL, status_code=204)
+    jira_api.set_issue_status(ISSUE_KEY, "Resolved")
+    posts = [r for r in requests_mock.request_history if r.method == "POST"]
+    assert len(posts) == 2
+    assert posts[0].json() == {"transition": {"id": 11}}
+    assert posts[1].json() == {"transition": {"id": 31}}
+
+
+def test_set_issue_status_unreachable(jira_api, requests_mock):
+    """Raises RuntimeError when the desired status cannot be reached."""
+    requests_mock.get(TRANSITIONS_URL, json={"transitions": []})
+    with raises(RuntimeError, match=r"Cannot reach status 'Done' for issue TEST-1"):
+        jira_api.set_issue_status(ISSUE_KEY, "Done")
+
+
+def test_set_issue_status_case_insensitive(jira_api, requests_mock):
+    """Lowercase input matches capitalized status name."""
+    requests_mock.get(TRANSITIONS_URL, json=TRANSITIONS_RESPONSE)
+    requests_mock.post(TRANSITIONS_URL, status_code=204)
+    jira_api.set_issue_status(ISSUE_KEY, "closed")
+    posts = [r for r in requests_mock.request_history if r.method == "POST"]
+    assert len(posts) == 1
+    assert posts[0].json() == {"transition": {"id": 21}}
+
+
+def test_set_issue_status_max_transitions_exhausted(jira_api, requests_mock):
+    """Raises RuntimeError when max_transitions is exhausted."""
+    # Each step offers a new unique intermediate status, never the target
+    steps = [
+        {
+            "json": {
+                "transitions": [
+                    {"id": str(i), "name": f"Go {i}", "to": {"name": f"Status{i}"}}
+                ]
+            }
+        }
+        for i in range(3)
+    ]
+    requests_mock.get(TRANSITIONS_URL, steps)
+    requests_mock.post(TRANSITIONS_URL, status_code=204)
+    with raises(RuntimeError, match=r"Cannot reach status 'Done' for issue TEST-1"):
+        jira_api.set_issue_status(ISSUE_KEY, "Done", max_transitions=3)
+
+
+def test_set_issue_status_all_visited(jira_api, requests_mock):
+    """Raises RuntimeError when all transitions lead to visited statuses."""
+    step1 = {
+        "transitions": [
+            {"id": "11", "name": "Go to A", "to": {"name": "A"}},
+        ]
+    }
+    # After transitioning to A, only transition goes back to a visited status
+    step2 = {
+        "transitions": [
+            {"id": "12", "name": "Go back", "to": {"name": "A"}},
+        ]
+    }
+    requests_mock.get(TRANSITIONS_URL, [{"json": step1}, {"json": step2}])
+    requests_mock.post(TRANSITIONS_URL, status_code=204)
+    with raises(RuntimeError, match=r"Cannot reach status 'Done' for issue TEST-1"):
+        jira_api.set_issue_status(ISSUE_KEY, "Done")
+
+
+def test_set_issue_status_dryrun(dryrun_jira_api, requests_mock):
+    dryrun_jira_api.set_issue_status(ISSUE_KEY, "Closed")
+    assert len(requests_mock.request_history) == 0
+
+
+def test_unexpected_response_get_issue_transitions(jira_api):
+    with patch.object(jira_api.jira, "get_issue_transitions", return_value="bad"):
+        with raises(RuntimeError, match=r"Unexpected response"):
+            jira_api.get_issue_transitions(ISSUE_KEY)
