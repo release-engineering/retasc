@@ -1,5 +1,6 @@
 import logging
 from functools import cached_property
+from unittest.mock import ANY
 
 from atlassian import Jira
 from opentelemetry import trace
@@ -132,6 +133,30 @@ class JiraClient:
 
         raise RuntimeError(f"Unexpected response: {data!r}")
 
+    @tracer.start_as_current_span("JiraClient.get_issue_transitions")
+    def get_issue_transitions(self, issue_key: str) -> list[dict]:
+        """
+        Get available transitions for a Jira issue.
+
+        :param issue_key: The key of the Jira issue.
+        :return: list of dicts with keys: name, id, to
+        """
+        data = self.jira.get_issue_transitions(issue_key)
+        if isinstance(data, list):
+            return data
+
+        raise RuntimeError(f"Unexpected response: {data!r}")
+
+    @tracer.start_as_current_span("JiraClient.transition_issue")
+    def transition_issue(self, issue_key: str, transition_id: str) -> None:
+        """
+        Transition a Jira issue using a transition ID.
+
+        :param issue_key: The key of the Jira issue.
+        :param transition_id: The ID of the transition to execute.
+        """
+        self.jira.set_issue_status_by_transition_id(issue_key, transition_id)
+
     @tracer.start_as_current_span("JiraClient.get_issue_comments")
     def get_issue_comments(self, issue_key: str) -> dict:
         """
@@ -161,6 +186,14 @@ class DryRunJiraClient(JiraClient):
     def add_comment(self, issue_key: str, comment: str) -> dict:
         # Skip adding comments in dry-run mode and return dummy data.
         return {"id": "1", "body": comment}
+
+    def get_issue_transitions(self, issue_key: str) -> list[dict]:
+        # Return a catch-all transition so status updates never fail in dry-run.
+        return [{"id": "0", "name": "Dry Run", "to": ANY}]
+
+    def transition_issue(self, issue_key: str, transition_id: str) -> None:
+        # Skip transitioning issues in dry-run mode.
+        pass
 
     def get_issue_comments(self, issue_key: str) -> dict:
         # Skip fetching comments in dry-run mode and return empty list.

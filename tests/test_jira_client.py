@@ -170,3 +170,50 @@ def test_unexpected_response_get_issue_comments(jira_api, requests_mock):
     requests_mock.get(f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/comment", json=[])
     with raises(RuntimeError, match=r"Unexpected response: \[\]"):
         jira_api.get_issue_comments(ISSUE_KEY)
+
+
+TRANSITIONS_URL = f"{JIRA_URL}/rest/api/2/issue/{ISSUE_KEY}/transitions"
+
+TRANSITIONS_RESPONSE = {
+    "transitions": [
+        {"id": "11", "name": "Start Progress", "to": {"name": "In Progress"}},
+        {"id": "21", "name": "Close", "to": {"name": "Closed"}},
+    ]
+}
+
+
+def test_get_issue_transitions(jira_api, requests_mock):
+    requests_mock.get(TRANSITIONS_URL, json=TRANSITIONS_RESPONSE)
+    result = jira_api.get_issue_transitions(ISSUE_KEY)
+    assert result == [
+        {"name": "Start Progress", "id": 11, "to": "In Progress"},
+        {"name": "Close", "id": 21, "to": "Closed"},
+    ]
+
+
+def test_get_issue_transitions_dryrun(dryrun_jira_api, requests_mock):
+    result = dryrun_jira_api.get_issue_transitions(ISSUE_KEY)
+    assert len(result) == 1
+    assert result[0]["to"] == "any status matches"
+    assert len(requests_mock.request_history) == 0
+
+
+def test_transition_issue(jira_api, requests_mock):
+    """Transition issue by transition ID."""
+    requests_mock.post(TRANSITIONS_URL, status_code=204)
+    jira_api.transition_issue(ISSUE_KEY, "21")
+    posts = [r for r in requests_mock.request_history if r.method == "POST"]
+    assert len(posts) == 1
+    # atlassian library converts string ID to int
+    assert posts[0].json() == {"transition": {"id": "21"}}
+
+
+def test_transition_issue_dryrun(dryrun_jira_api, requests_mock):
+    dryrun_jira_api.transition_issue(ISSUE_KEY, "21")
+    assert len(requests_mock.request_history) == 0
+
+
+def test_unexpected_response_get_issue_transitions(jira_api):
+    with patch.object(jira_api.jira, "get_issue_transitions", return_value="bad"):
+        with raises(RuntimeError, match=r"Unexpected response"):
+            jira_api.get_issue_transitions(ISSUE_KEY)
