@@ -259,7 +259,14 @@ def test_run_rule_jira_search_once_per_prerequisite(factory, mock_jira, mock_pp)
     assert mock_jira.search_issues.mock_calls == [
         call(
             jql=f'labels="retasc-id-test-{release}"',
-            fields=["labels", "resolution", "summary"],
+            fields=[
+                "issuetype",
+                "labels",
+                "project",
+                "resolution",
+                "status",
+                "summary",
+            ],
         )
         for release in releases
         for _ in range(2)

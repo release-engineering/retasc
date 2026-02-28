@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import Field
 
 from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
+from retasc.models.prerequisites.jira_status import update_issue_status
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.utils import to_comma_separated
 from retasc.yaml import yaml
@@ -29,7 +30,9 @@ TEMPLATE_PATH_DESCRIPTION = (
     ' relative to the "jira_template_path" configuration.'
 )
 FIELDS_DESCRIPTION = "Jira fields, override fields in the template"
-JIRA_REQUIRED_FIELDS = frozenset(["labels", "resolution"])
+JIRA_REQUIRED_FIELDS = frozenset(
+    ["issuetype", "labels", "project", "resolution", "status"]
+)
 
 
 def _is_resolved(issue: dict) -> bool:
@@ -219,6 +222,25 @@ class JiraIssueTemplate(PrerequisiteBase):
             "and a comment with the same text does not exist already."
         ),
     )
+    status: str | None = Field(
+        default=None,
+        description=(
+            "Optional Jinja2 template for the desired Jira issue status. "
+            "If set, the issue will be transitioned to this status."
+        ),
+    )
+    transitions: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Ordered list of intermediate statuses to try when the target"
+            " status is not directly reachable. At each step, ReTaSC first"
+            " attempts a direct transition to the target status. If that is"
+            " not available, it picks the latest (rightmost) status from the"
+            " remaining intermediates that is available as a Jira transition,"
+            " executes it, and repeats. Entries at or before the issue's"
+            " current status are skipped automatically."
+        ),
+    )
 
     def _update_issue_data(
         self,
@@ -266,6 +288,9 @@ class JiraIssueTemplate(PrerequisiteBase):
             issue["fields"] = {"resolution": None, **fields}
             if self.comment is not None:
                 _add_issue_comment(issue["key"], self.comment, context)
+
+        if self.status is not None:
+            update_issue_status(issue, self.status, self.transitions, context)
 
         issue["fields"] = {
             context.config.from_jira_field_name(f): v
