@@ -14,6 +14,7 @@ from retasc.models.inputs.jira_issues import JiraIssues
 from retasc.models.inputs.product_pages_releases import parse_version
 from retasc.models.inputs.variables import Variables
 from retasc.models.prerequisites.condition import PrerequisiteCondition
+from retasc.models.prerequisites.jira_issue import _is_jira_field_up_to_date
 from retasc.models.prerequisites.rule import PrerequisiteRule
 from retasc.models.prerequisites.schedule import PrerequisiteSchedule
 from retasc.models.prerequisites.target_date import PrerequisiteTargetDate
@@ -895,6 +896,148 @@ def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once()
+
+
+def test_run_rule_jira_issue_sprint_field_up_to_date(factory, mock_jira):
+    """
+    Some Jira fields (e.g. Sprint) are returned as a list with Java
+    toString() strings containing "id=XXXXX", but the update value is just
+    an integer ID. The field should be considered up-to-date when the ID
+    matches.
+    """
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("""
+        summary: test
+        sprint: 100
+    """)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    sprint_str = (
+        "com.atlassian.greenhopper.service.sprint.Sprint@1a2b3c4"
+        "[id=100,rapidViewId=200,state=FUTURE,"
+        "name=Sprint 1,"
+        "startDate=2025-01-01T00:00:00.000Z,"
+        "endDate=2025-01-14T23:59:59.000Z,"
+        "completeDate=<null>,activatedDate=<null>,"
+        "sequence=100,goal=,synced=false,"
+        "autoStartStop=false,"
+        "incompleteIssuesDestinationId=<null>]"
+    )
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "summary": "test",
+                "customfield_99999": [sprint_str],
+                "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
+                "resolution": None,
+            },
+        }
+    ]
+    additional_jira_fields = {"sprint": "customfield_99999"}
+    report = call_run(additional_jira_fields=additional_jira_fields)
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "issue_data": ANY,
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
+            }
+        ]
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_not_called()
+
+
+def test_run_rule_jira_issue_sprint_field_needs_update(factory, mock_jira):
+    """
+    A field with Java toString() representation should be updated when
+    the ID doesn't match.
+    """
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("""
+        summary: test
+        sprint: 999
+    """)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    sprint_str = (
+        "com.atlassian.greenhopper.service.sprint.Sprint@1a2b3c4"
+        "[id=100,rapidViewId=200,state=FUTURE,"
+        "name=Sprint 1]"
+    )
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "summary": "test",
+                "customfield_99999": [sprint_str],
+                "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
+                "resolution": None,
+            },
+        }
+    ]
+    additional_jira_fields = {"sprint": "customfield_99999"}
+    report = call_run(additional_jira_fields=additional_jira_fields)
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "issue_data": ANY,
+                                "issue_status": "updated",
+                                "update": {"customfield_99999": 999},
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
+            }
+        ]
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_called_once_with("TEST-1", {"customfield_99999": 999})
+
+
+@mark.parametrize(
+    "current, new, expected",
+    [
+        # Java toString() with matching id
+        ("ClassName@abc[id=42,name=foo]", 42, True),
+        # Java toString() with non-matching id
+        ("ClassName@abc[id=42,name=foo]", 99, False),
+        # Plain string without id= compared to int falls through
+        ("some plain string", 42, False),
+        # Single-element list unwrapped to match scalar
+        (["hello"], "hello", True),
+        (["hello"], "world", False),
+        # Single-element list with Java toString()
+        (["ClassName@abc[id=42,name=foo]"], 42, True),
+        # Multi-element list vs scalar never matches
+        (["a", "b"], "a", False),
+    ],
+)
+def test_is_jira_field_up_to_date(current, new, expected):
+    assert _is_jira_field_up_to_date(current, new) == expected
 
 
 def test_run_rule_jira_issue_completed(factory, mock_jira):
