@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import json
 import os
+import re
 from collections.abc import Iterator
 from itertools import takewhile
 from textwrap import dedent
@@ -39,6 +40,18 @@ def _is_resolved(issue: dict) -> bool:
     return issue["fields"]["resolution"] is not None
 
 
+def _extract_java_object_id(value: str) -> int | None:
+    """Extract the id from a Java object toString() representation.
+
+    Jira sometimes returns field values as Java toString() strings like:
+    "com.example.ClassName@hash[id=12345,name=foo,...]"
+
+    Returns the integer id if found, None otherwise.
+    """
+    match = re.search(r"\bid=(\d+)", value)
+    return int(match.group(1)) if match else None
+
+
 def _is_jira_field_up_to_date(current_value, new_value):
     if isinstance(current_value, dict) and isinstance(new_value, dict):
         return all(
@@ -50,6 +63,16 @@ def _is_jira_field_up_to_date(current_value, new_value):
         return len(current_value) == len(new_value) and all(
             _is_jira_field_up_to_date(current_value[i], new_value[i])
             for i in range(len(current_value))
+        )
+
+    if isinstance(current_value, str) and isinstance(new_value, int):
+        extracted_id = _extract_java_object_id(current_value)
+        if extracted_id is not None:
+            return extracted_id == new_value
+
+    if isinstance(current_value, list) and not isinstance(new_value, list):
+        return len(current_value) == 1 and _is_jira_field_up_to_date(
+            current_value[0], new_value
         )
 
     return current_value == new_value
