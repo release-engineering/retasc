@@ -107,6 +107,65 @@ storing any extra information. The label is constructed using
 "jira_label_prefix" configuration, "jira_issue" from the prerequisite and
 "jira_label_suffix" template variable originating from the Product pages input.
 
+### Rule to Assign and Comment on a Jira Issue
+
+The `jira` template variable provides access to the Jira client, which can be
+used to assign issues to the ReTaSC bot account. Additionally, the `comment`
+field allows adding comments to Jira issues (duplicate comments are
+automatically skipped):
+
+```yaml
+name: New Release Handoff
+inputs:
+  - product: rhel
+prerequisites:
+  - schedule_task: "GA"
+  - target_date: "start_date - 8|weeks"
+
+  - jira_issue: release-handoff
+    template: "rhel/release-handoff.yml.j2"
+    fields:
+      # Assign the issue to the ReTaSC bot account
+      assignee:
+        key: "{{ jira.current_user_key }}"
+    # Add a comment when the issue is created or updated
+    comment: "This issue was created by ReTaSC for {{ release }}."
+```
+
+### Rule to Transition Jira Issue Status
+
+The `status` field allows transitioning a Jira issue to a desired status. When
+the target status is not directly reachable, use `transitions` to specify
+intermediate statuses to try:
+
+```yaml
+name: Close Completed Release Tasks
+inputs:
+  - product: rhel
+prerequisites:
+  - schedule_task: "GA"
+  - target_date: "end_date + 1|week"
+
+  - jira_issue: release-task
+    template: "rhel/release-task.yml.j2"
+    # Transition the issue to "Closed" status
+    status: "Closed"
+    # If "Closed" is not directly reachable, try these intermediate
+    # statuses in order
+    transitions:
+      - New
+      - In Progress
+      - Review
+      - Resolved
+      - Closed
+```
+
+At each step, ReTaSC first attempts a direct transition to the target status.
+If that is not available, it picks the latest (rightmost) status from the
+remaining intermediates that is available as a Jira transition, executes it,
+and repeats. Entries at or before the issue's current status are skipped
+automatically.
+
 ### Rule to Create a Jira Issue on a Fixed Date
 
 The following rule will create a Jira 2 weeks before a target date:
@@ -243,6 +302,8 @@ Template variables:
 - `report.result` - result from the last `condition` prerequisite
 - `today` - today's date in UTC (Python `date` object)
 - `rule_file` - current rule file path
+- `jira` - Jira client object; provides `jira.current_user_key` for assigning
+  issues to the ReTaSC bot account
 - `jira_issues` - dict of managed Jira issues; key is Jira issue ID
 - `jira_template_file` - Jira issue template path, available only in Jira
   template prerequisites
