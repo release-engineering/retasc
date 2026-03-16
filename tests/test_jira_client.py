@@ -28,6 +28,11 @@ def jira_api():
 
 
 @fixture
+def jira_cloud_api():
+    return JiraClient(JIRA_URL, token="DUMMY-TOKEN", session=Session(), cloud=True)
+
+
+@fixture
 def dryrun_jira_api():
     return DryRunJiraClient(JIRA_URL, token="DUMMY-TOKEN", session=Session())
 
@@ -35,6 +40,14 @@ def dryrun_jira_api():
 def test_current_user_key(jira_api, requests_mock):
     requests_mock.get(f"{JIRA_URL}/rest/api/2/myself", json={"key": "retasc-bot"})
     assert jira_api.current_user_key == "retasc-bot"
+
+
+def test_current_user_key_cloud(jira_cloud_api, requests_mock):
+    requests_mock.get(
+        f"{JIRA_URL}/rest/api/2/myself",
+        json={"accountId": "abc123", "displayName": "retasc-bot"},
+    )
+    assert jira_cloud_api.current_user_key == "abc123"
 
 
 def test_create_issue(jira_api, requests_mock):
@@ -83,6 +96,14 @@ def test_search_issues_fields(jira_api, requests_mock):
     assert len(requests_mock.request_history) == 1
     assert requests_mock.request_history[0].qs["jql"] == [JQL.lower()]
     assert requests_mock.request_history[0].qs["fields"] == ["a,b"]
+
+
+def test_search_issues_cloud(jira_cloud_api, requests_mock):
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/search/jql", json=SEARCH_LIST)
+    issues = jira_cloud_api.search_issues(JQL)
+    assert issues == [{"id": "10000", "key": ISSUE_KEY}]
+    assert len(requests_mock.request_history) == 1
+    assert requests_mock.request_history[0].qs["jql"] == [JQL.lower()]
 
 
 def test_unexpected_response_create_issue(jira_api, requests_mock):
