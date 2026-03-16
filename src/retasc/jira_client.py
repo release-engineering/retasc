@@ -39,14 +39,31 @@ class JiraClient:
         # value to be an int.
         self.jira.timeout = timeout  # type: ignore
 
+    @property
+    def cloud(self) -> bool:
+        """Whether this client is connected to Jira Cloud."""
+        return self.jira.cloud
+
+    def _get_user_identifier(self, user: dict) -> str | None:
+        """
+        Extract user identifier from a Jira user dict.
+
+        Jira Cloud uses "accountId", Jira Server uses "key".
+        """
+        field = "accountId" if self.cloud else "key"
+        value = user.get(field)
+        return value if isinstance(value, str) else None
+
     @cached_property
     def current_user_key(self) -> str:
         """
-        Get the current user's account ID.
+        Get the current user's identifier.
         """
         user = self.jira.myself()
-        if isinstance(user, dict) and isinstance(user.get("key"), str):
-            return user["key"]
+        if isinstance(user, dict):
+            key = self._get_user_identifier(user)
+            if key is not None:
+                return key
 
         raise RuntimeError(f"Unexpected response: {user!r}")
 

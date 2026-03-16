@@ -85,7 +85,7 @@ def _skip_user_modified_fields(issue: dict, to_update: dict, context) -> dict:
     data = context.jira.get_issue(issue["key"], fields=[], expand="changelog")
     changelog = data.get("changelog", {}).get("histories", [])
     field_authors = {
-        item["field"]: change.get("author", {}).get("key")
+        item["field"]: context.jira._get_user_identifier(change.get("author", {}))
         for change in changelog
         for item in change.get("items", [])
     }
