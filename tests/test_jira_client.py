@@ -124,6 +124,14 @@ def test_unexpected_response_current_user_key(jira_api, requests_mock):
         jira_api.current_user_key
 
 
+def test_unexpected_response_current_user_key_missing_field(jira_api, requests_mock):
+    requests_mock.get(
+        f"{JIRA_URL}/rest/api/2/myself", json={"displayName": "retasc-bot"}
+    )
+    with raises(RuntimeError, match=r"Unexpected response"):
+        jira_api.current_user_key
+
+
 def test_timeout(requests_mock):
     """
     The default timeout in atlassian.Jira API is 75 seconds for both the
