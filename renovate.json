@@ -4,8 +4,8 @@
     "config:best-practices",
     "group:all",
     ":disableDependencyDashboard",
-    ":maintainLockFilesWeekly",
-    "schedule:weekly"
+    ":maintainLockFilesMonthly",
+    "schedule:monthly"
   ],
   "dockerfile": {
     "managerFilePatterns": [
