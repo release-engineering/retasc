@@ -12,6 +12,7 @@
       subtasks:
         - jira_issue: add_beta_repos
           template: "add_beta_repos.yaml.j2"
+          when: "major >= 10"
         - jira_issue: notify_team
           fields:
             project:
