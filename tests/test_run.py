@@ -401,6 +401,97 @@ def test_run_rule_jira_issue_create_subtasks(factory):
     }
 
 
+def test_run_rule_jira_issue_when_false(factory, mock_jira):
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE, when="false")
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    report = call_run()
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "skipped": True,
+                            }
+                        ],
+                        "state": "Completed",
+                    }
+                ],
+            }
+        ]
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.search_issues.assert_not_called()
+
+
+def test_run_rule_jira_issue_subtask_when_false(factory, mock_jira):
+    subtasks = [
+        factory.new_jira_subtask(DUMMY_ISSUE, when="false"),
+        factory.new_jira_subtask(DUMMY_ISSUE),
+    ]
+    jira_issue_prereq = factory.new_jira_issue_prerequisite(
+        DUMMY_ISSUE, subtasks=subtasks
+    )
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    report = call_run()
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_3",
+                                "issue_data": {
+                                    "summary": "test",
+                                    "labels": [
+                                        "retasc-id-test_jira_template_3-rhel-10.0"
+                                    ],
+                                },
+                                "issue_status": "created",
+                                "issue_id": "TEST-1",
+                                "state": "InProgress",
+                                "subtasks": [
+                                    {
+                                        "type": "Subtask",
+                                        "jira_issue": "test_jira_template_1",
+                                        "skipped": True,
+                                    },
+                                    {
+                                        "type": "Subtask",
+                                        "jira_issue": "test_jira_template_2",
+                                        "issue_data": {
+                                            "summary": "test",
+                                            "labels": [
+                                                "retasc-id-test_jira_template_2-rhel-10.0"
+                                            ],
+                                            "parent": {"key": "TEST-1"},
+                                        },
+                                        "issue_status": "created",
+                                        "issue_id": "TEST-2",
+                                    },
+                                ],
+                            },
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
+            }
+        ]
+    }
+    assert mock_jira.create_issue.call_count == 2
+
+
 def test_run_rule_jira_issue_in_progress(factory, mock_jira):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(DUMMY_ISSUE)
     rule = factory.new_rule(prerequisites=[jira_issue_prereq])

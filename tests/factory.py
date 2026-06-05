@@ -47,10 +47,12 @@ class Factory:
 
         return str(tmp)
 
-    def new_jira_subtask(self, template: str) -> JiraIssueTemplate:
+    def new_jira_subtask(
+        self, template: str, *, when: str = "true"
+    ) -> JiraIssueTemplate:
         jira_issue = self.new_jira_issue_id()
         file = self.new_jira_template_file(jira_issue, template)
-        return JiraIssueTemplate(jira_issue=jira_issue, template=file)
+        return JiraIssueTemplate(jira_issue=jira_issue, template=file, when=when)
 
     def new_jira_issue_prerequisite(
         self,
@@ -59,6 +61,7 @@ class Factory:
         fields: dict[str, Any] | None = None,
         jira_issue: str = "",
         subtasks=[],
+        when: str = "true",
     ):
         jira_issue_ = jira_issue or self.new_jira_issue_id()
 
@@ -72,4 +75,5 @@ class Factory:
             template=file,
             fields=fields or {},
             subtasks=subtasks,
+            when=when,
         )

@@ -264,6 +264,20 @@ class JiraIssueTemplate(PrerequisiteBase):
             " current status are skipped automatically."
         ),
     )
+    when: str = Field(
+        default="true",
+        description=(
+            "Condition expression. The issue is only created/updated"
+            " when it evaluates to true. Defaults to 'true' (always created)."
+        ),
+    )
+
+    def _want_update(self, context):
+        if context.template.evaluate(self.when):
+            return True
+
+        context.report.set("skipped", True)
+        return False
 
     def _update_issue_data(
         self,
@@ -388,6 +402,10 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
         context.template.params["jira_template_file"] = self.template
         jira_issue_id = context.template.render(self.jira_issue)
         context.report.set("jira_issue", jira_issue_id)
+
+        if not self._want_update(context):
+            return ReleaseRuleState.Completed
+
         issue = self._update_issue(jira_issue_id, context=context)
         if issue is None:
             return ReleaseRuleState.InProgress
@@ -400,6 +418,8 @@ class PrerequisiteJiraIssue(JiraIssueTemplate):
             subtask_id = context.template.render(subtask.jira_issue)
             with context.report.section("subtasks", type="Subtask", name=subtask_id):
                 context.report.set("jira_issue", subtask_id)
+                if not subtask._want_update(context):
+                    continue
                 subtask._update_issue(
                     subtask_id,
                     context,
