@@ -214,6 +214,7 @@ def _add_issue_comment(issue_key: str, comment_template: str, context) -> None:
 
     context.jira.add_comment(issue_key, comment)
     context.report.set("comment_status", "added")
+    context.report.set("comment", comment)
 
 
 def _get_single_issue_or_raise(issues: list[dict], label: str) -> dict:
