@@ -50,6 +50,7 @@ def test_comment_added_to_new_issue(mock_context):
     assert state == ReleaseRuleState.InProgress
     mock_context.jira.add_comment.assert_called_once_with("TEST-1", comment_text)
     assert mock_context.report.current_data.get("comment_status") == "added"
+    assert mock_context.report.current_data.get("comment") == comment_text
 
 
 def test_comment_templated(mock_context):
@@ -88,6 +89,7 @@ def test_comment_templated(mock_context):
 
     assert state == ReleaseRuleState.InProgress
     mock_context.jira.add_comment.assert_called_once_with("TEST-2", expected_comment)
+    assert mock_context.report.current_data.get("comment") == expected_comment
 
 
 def test_comment_skipped_duplicate(mock_context):
