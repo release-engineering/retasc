@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -17,7 +17,7 @@ def test_prerequisite_target_date_draft_schedule_reached():
 
     context = Mock()
     context.template = TemplateManager(template_search_path=Path())
-    today = datetime.now().date()
+    today = datetime.now(UTC).date()
     context.template.params["start_date"] = today
     context.template.params["schedule_task_is_draft"] = True
 

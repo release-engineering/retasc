@@ -74,7 +74,7 @@ class Rule(BaseModel):
         for prereq in self.prerequisites:
             context.template.params["rule_file"] = self.rule_file
             section = type(prereq).__name__.replace("Prerequisite", "")
-            name = list(prereq.model_dump().values())[0]
+            name = next(iter(prereq.model_dump().values()))
             with context.report.section("prerequisites", type=section, name=name):
                 state = self._process_prerequisite(prereq, context)
                 if state != ReleaseRuleState.Completed:

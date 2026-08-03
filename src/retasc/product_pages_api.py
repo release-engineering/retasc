@@ -63,8 +63,10 @@ class ProductPagesApi:
     def __init__(self, api_url: str, *, session: Session):
         self.api_url = api_url.rstrip("/")
         self.session = session
+        # Instance-level cache to avoid preventing garbage collection of self
+        self.active_releases = cache(self.active_releases)  # type: ignore[method-assign]
+        self.release_schedules = cache(self.release_schedules)  # type: ignore[method-assign]
 
-    @cache
     @tracer.start_as_current_span("ProductPagesApi.active_releases")
     def active_releases(
         self,
@@ -98,7 +100,6 @@ class ProductPagesApi:
             if lower_bound <= item["phase"] <= upper_bound
         ]
 
-    @cache
     @tracer.start_as_current_span("ProductPagesApi.release_schedules")
     def release_schedules(
         self, release_short_name: str

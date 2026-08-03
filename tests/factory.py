@@ -60,7 +60,7 @@ class Factory:
         *,
         fields: dict[str, Any] | None = None,
         jira_issue: str = "",
-        subtasks=[],
+        subtasks=None,
         when: str = "true",
     ):
         jira_issue_ = jira_issue or self.new_jira_issue_id()
@@ -74,6 +74,6 @@ class Factory:
             jira_issue=jira_issue_,
             template=file,
             fields=fields or {},
-            subtasks=subtasks,
+            subtasks=subtasks if subtasks is not None else [],
             when=when,
         )

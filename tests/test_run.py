@@ -33,9 +33,11 @@ DUMMY_ISSUE_FIELDS = {"summary": "test"}
 RULE_INPUT = "ProductPagesReleases('rhel-10.0')"
 
 
-def call_run(*, oidc_token_url: str | None = None, additional_jira_fields: dict = {}):
+def call_run(
+    *, oidc_token_url: str | None = None, additional_jira_fields: dict | None = None
+):
     config = parse_config("examples/config.yaml")
-    config.jira_fields.update(additional_jira_fields)
+    config.jira_fields.update(additional_jira_fields or {})
     config.oidc_token_url = oidc_token_url
     return run(config=config, jira_token="", rule_files=[config.rules_path])
 
@@ -1444,7 +1446,6 @@ def test_run_rule_schedule_missing(mock_pp, factory):
         ("start_date | string != '1990-01-01'", False),
         ("(start_date +31|days) | string == '1990-02-01'", True),
         ("(start_date +1|week) | string == '1990-01-08'", True),
-        ("(start_date +1|week) | string == '1990-01-08'", True),
         ("today.year >= 2024", True),
         ("start_date.weekday() == MONDAY", True),
     ),
@@ -2002,7 +2003,7 @@ def test_run_product_pages_kerberos_auth(
     mock_cls, requests_mock, mock_parse_rules, tmpdir, monkeypatch
 ):
     cookies = tmpdir / "pp_cookies.txt"
-    timestamp = int(datetime.now().timestamp()) + 3600
+    timestamp = int(datetime.now(UTC).timestamp()) + 3600
     cookies.write(
         "# Netscape HTTP Cookie File\n"
         f"pp.example.com	FALSE	/	FALSE	{timestamp}	test	value"

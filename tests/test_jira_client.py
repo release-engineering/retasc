@@ -121,7 +121,7 @@ def test_unexpected_response_get_issue(jira_api, requests_mock):
 def test_unexpected_response_current_user_key(jira_api, requests_mock):
     requests_mock.get(f"{JIRA_URL}/rest/api/2/myself", json=[])
     with raises(RuntimeError, match=r"Unexpected response: \[\]"):
-        jira_api.current_user_key
+        _ = jira_api.current_user_key
 
 
 def test_unexpected_response_current_user_key_missing_field(jira_api, requests_mock):
@@ -129,7 +129,7 @@ def test_unexpected_response_current_user_key_missing_field(jira_api, requests_m
         f"{JIRA_URL}/rest/api/2/myself", json={"displayName": "retasc-bot"}
     )
     with raises(RuntimeError, match=r"Unexpected response"):
-        jira_api.current_user_key
+        _ = jira_api.current_user_key
 
 
 def test_timeout(requests_mock):
@@ -243,6 +243,8 @@ def test_transition_issue_dryrun(dryrun_jira_api, requests_mock):
 
 
 def test_unexpected_response_get_issue_transitions(jira_api):
-    with patch.object(jira_api.jira, "get_issue_transitions", return_value="bad"):
-        with raises(RuntimeError, match=r"Unexpected response"):
-            jira_api.get_issue_transitions(ISSUE_KEY)
+    with (
+        patch.object(jira_api.jira, "get_issue_transitions", return_value="bad"),
+        raises(RuntimeError, match=r"Unexpected response"),
+    ):
+        jira_api.get_issue_transitions(ISSUE_KEY)
