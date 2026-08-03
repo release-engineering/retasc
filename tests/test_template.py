@@ -55,9 +55,8 @@ def test_template_extensions_missing_function(fixtures):
 def test_template_extensions_missing_file(fixtures, mock_fn):
     template_search_path = fixtures / "templates"
     expected = re.escape(f"Could not load extensions from {__file__}")
-    with patch(mock_fn, return_value=None):
-        with raises(RuntimeError, match=expected):
-            TemplateManager(
-                template_search_path=template_search_path,
-                template_extensions=[Path(__file__)],
-            )
+    with patch(mock_fn, return_value=None), raises(RuntimeError, match=expected):
+        TemplateManager(
+            template_search_path=template_search_path,
+            template_extensions=[Path(__file__)],
+        )

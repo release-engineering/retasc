@@ -23,7 +23,7 @@ class TemplateExtensionLoader:
             raise RuntimeError(f"Could not load extensions from {path}")
 
         spec.loader.exec_module(module)
-        logging.info("Loading template extension: %s", path)
+        logger.info("Loading template extension: %s", path)
         module.update_environment(env)
 
 

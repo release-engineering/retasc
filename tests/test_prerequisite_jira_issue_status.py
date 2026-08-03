@@ -5,7 +5,10 @@ from unittest.mock import Mock
 from pytest import fixture, raises
 
 from retasc.models.prerequisites.exceptions import PrerequisiteUpdateStateError
-from retasc.models.prerequisites.jira_issue import PrerequisiteJiraIssue
+from retasc.models.prerequisites.jira_issue import (
+    PrerequisiteJiraIssue,
+    jira_issue_prerequisites,
+)
 from retasc.models.release_rule_state import ReleaseRuleState
 from retasc.report import Report
 from retasc.templates.template_manager import TemplateManager
@@ -312,3 +315,7 @@ def test_unreachable_with_transitions(mock_context):
 
     with raises(PrerequisiteUpdateStateError, match="Cannot transition issue"):
         prereq.update_state(mock_context)
+
+
+def test_jira_issue_prerequisites_empty_rules():
+    assert list(jira_issue_prerequisites([])) == []

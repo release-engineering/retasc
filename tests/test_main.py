@@ -104,7 +104,7 @@ def test_run(arg, issue_key, capsys):
     actual_lines = [
         line
         for line in stdout.split("\n")
-        if line.startswith(" ") or line.startswith("ProductPagesReleases")
+        if line.startswith((" ", "ProductPagesReleases"))
     ]
 
     assert expected_lines == actual_lines, stdout
@@ -150,7 +150,7 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
     actual_lines = [
         line
         for line in stdout.split("\n")
-        if line.startswith(" ") or line.startswith("ProductPagesReleases")
+        if line.startswith((" ", "ProductPagesReleases"))
     ]
     assert expected_lines == actual_lines
 

@@ -459,6 +459,3 @@ def jira_issue_prerequisites(rules):
         for prereq in rule.prerequisites:
             if isinstance(prereq, PrerequisiteJiraIssue):
                 yield prereq
-    # Ignore this from coverage since rules is always non-empty and the
-    # iteration always stops at a specific prerequisite.
-    return  # pragma: no cover  # NOSONAR

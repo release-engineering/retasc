@@ -36,7 +36,7 @@ def to_date(value: str) -> date:
     """
     Parse a date string in the format YYYY-MM-DD.
     """
-    return datetime.strptime(value, "%Y-%m-%d").date()
+    return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=UTC).date()
 
 
 GLOBALS = {
