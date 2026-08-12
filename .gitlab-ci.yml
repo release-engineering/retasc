@@ -49,6 +49,10 @@ sonarqube-scan-sast:
   stage: sonarqube
   needs:
     - unittests
+  # Disable SonarQube for now - it often fails with HTTP 502 and adds
+  # nonsensical rules we cannot easily disable/ignore.
+  rules:
+    - when: never
 
 owasp_dependency_check-scan:
   rules:
