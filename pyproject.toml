@@ -16,7 +16,7 @@ dependencies = [
   "requests>=2.32.4,<3",
   "urllib3>=2.3.0,<3",
   "pydantic>=2.11.7,<3",
-  "atlassian-python-api>=4.0.7,<5",
+  "atlassian-python-api>=5.0.4,<6",
   "Jinja2>=3.1.6,<4",
   "ruamel-yaml>=0.18.14,<0.20",
 ]
