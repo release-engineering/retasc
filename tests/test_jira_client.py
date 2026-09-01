@@ -99,7 +99,7 @@ def test_search_issues_fields(jira_api, requests_mock):
 
 
 def test_search_issues_cloud(jira_cloud_api, requests_mock):
-    requests_mock.get(f"{JIRA_URL}/rest/api/2/search/jql", json=SEARCH_LIST)
+    requests_mock.get(f"{JIRA_URL}/rest/api/3/search/jql", json=SEARCH_LIST)
     issues = jira_cloud_api.search_issues(JQL)
     assert issues == [{"id": "10000", "key": ISSUE_KEY}]
     assert len(requests_mock.request_history) == 1
