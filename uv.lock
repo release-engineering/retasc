@@ -57,7 +57,7 @@ wheels = [
 
 [[package]]
 name = "atlassian-python-api"
-version = "4.0.7"
+version = "5.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -68,9 +68,9 @@ dependencies = [
     { name = "requests-oauthlib" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/e8/f23b7273e410c6fe9f98f9db25268c6736572f22a9566d1dc9ed3614bb68/atlassian_python_api-4.0.7.tar.gz", hash = "sha256:8d9cc6068b1d2a48eb434e22e57f6bbd918a47fac9e46b95b7a3cefb00fceacb", size = 271149, upload-time = "2025-08-21T13:19:40.746Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/c2/40110a24a00d30984d85aac0b90ced450601e146c54f6d43580fe0f90790/atlassian_python_api-5.0.4.tar.gz", hash = "sha256:c11cf53283c795d84ddfb593f3c7503f3b0b3c20191fc3061781b2665c10f6b3", size = 1755934, upload-time = "2026-08-28T08:08:11.791Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/83/e4f9976ce3c933a079b8931325e7a9c0a8bba7030a2cb85764c0048f3479/atlassian_python_api-4.0.7-py3-none-any.whl", hash = "sha256:46a70cb29eaab87c0a1697fccd3e25df1aa477e6aa4fb9ba936a9d46b425933c", size = 197746, upload-time = "2025-08-21T13:19:39.044Z" },
+    { url = "https://files.pythonhosted.org/packages/53/93/b091e10f0c14430137b487626e97894ce0f69ad007726113bd239043f239/atlassian_python_api-5.0.4-py3-none-any.whl", hash = "sha256:b1f58d68d3a3bd9b7b8bd5a2c1ed006113bc5c4bd90c75350f66428685fb613c", size = 343098, upload-time = "2026-08-28T08:08:09.895Z" },
 ]
 
 [[package]]
@@ -766,7 +766,7 @@ types = [
 
 [package.metadata]
 requires-dist = [
-    { name = "atlassian-python-api", specifier = ">=4.0.7,<5" },
+    { name = "atlassian-python-api", specifier = ">=5.0.4,<6" },
     { name = "jinja2", specifier = ">=3.1.6,<4" },
     { name = "mypy", marker = "extra == 'types'", specifier = ">=1.18.2" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.35.0,<2" },
