@@ -88,6 +88,7 @@ def _skip_user_modified_fields(issue: dict, to_update: dict, context) -> dict:
         item["fieldId"]: context.jira._get_user_identifier(change.get("author", {}))
         for change in changelog
         for item in change.get("items", [])
+        if "fieldId" in item
     }
 
     skip_fields = {

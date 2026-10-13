@@ -829,6 +829,19 @@ def test_run_rule_jira_issue_skip_update_user_modified_fields(factory, mock_jira
                         },
                     ],
                 },
+                {
+                    # Parent/subtask link changes have no fieldId and
+                    # aren't a field ReTaSC can manage; must be ignored.
+                    "author": {"key": "alice"},
+                    "created": "2025-01-01T03:00:00.000+0000",
+                    "items": [
+                        {
+                            "field": "IssueParentAssociation",
+                            "from": None,
+                            "to": "TEST-2",
+                        },
+                    ],
+                },
             ],
         },
     }
