@@ -809,14 +809,24 @@ def test_run_rule_jira_issue_skip_update_user_modified_fields(factory, mock_jira
                     "author": {"key": "retasc-bot"},
                     "created": "2025-01-01T01:00:00.000+0000",
                     "items": [
-                        {"field": "description", "from": "test0", "to": "test1"},
+                        {
+                            "field": "description",
+                            "fieldId": "description",
+                            "from": "test0",
+                            "to": "test1",
+                        },
                     ],
                 },
                 {
                     "author": {"key": "alice"},
                     "created": "2025-01-01T02:00:00.000+0000",
                     "items": [
-                        {"field": "description", "from": "test1", "to": "test2"},
+                        {
+                            "field": "description",
+                            "fieldId": "description",
+                            "from": "test1",
+                            "to": "test2",
+                        },
                     ],
                 },
             ],
@@ -882,6 +892,81 @@ def test_run_rule_jira_issue_skip_update_user_modified_fields(factory, mock_jira
     }
     mock_jira.create_issue.assert_not_called()
     mock_jira.edit_issue.assert_called_once()
+
+
+def test_run_rule_jira_issue_skip_update_user_modified_custom_field(factory, mock_jira):
+    """
+    Avoid updating a custom Jira field that was modified by a user.
+
+    Jira's changelog reports custom field changes using the human-readable
+    field name in "field" and the internal field id in "fieldId".
+    """
+    jira_issue_prereq = factory.new_jira_issue_prerequisite("""
+        service:
+          value: waiverdb
+    """)
+    rule = factory.new_rule(prerequisites=[jira_issue_prereq])
+    mock_jira.search_issues.return_value = [
+        {
+            "key": "TEST-1",
+            "fields": {
+                "customfield_123": {"value": "gating"},
+                "labels": ["retasc-id-test_jira_template_1-rhel-10.0"],
+                "resolution": None,
+            },
+        }
+    ]
+    mock_jira.current_user_key.return_value = {"key": "retasc-bot"}
+    mock_jira.get_issue.return_value = {
+        "key": "TEST-1",
+        "changelog": {
+            "startAt": 0,
+            "maxResults": 1,
+            "total": 1,
+            "histories": [
+                {
+                    "author": {"key": "alice"},
+                    "created": "2025-01-01T02:00:00.000+0000",
+                    "items": [
+                        {
+                            "field": "Service",
+                            "fieldId": "customfield_123",
+                            "from": None,
+                            "to": "gating",
+                        },
+                    ],
+                },
+            ],
+        },
+    }
+    additional_jira_fields = {"service": "customfield_123"}
+    report = call_run(additional_jira_fields=additional_jira_fields)
+    assert report.data == {
+        "inputs": [
+            {
+                "type": "ProductPagesReleases",
+                "release": "rhel-10.0",
+                "rules": [
+                    {
+                        "rule": rule.name,
+                        "prerequisites": [
+                            {
+                                "type": "JiraIssue",
+                                "jira_issue": "test_jira_template_1",
+                                "issue_id": "TEST-1",
+                                "issue_data": ANY,
+                                "skip_modified_fields": ["customfield_123"],
+                                "state": "InProgress",
+                            }
+                        ],
+                        "state": "InProgress",
+                    }
+                ],
+            }
+        ]
+    }
+    mock_jira.create_issue.assert_not_called()
+    mock_jira.edit_issue.assert_not_called()
 
 
 def test_run_rule_jira_issue_update_complex_nested_field(factory, mock_jira):
