@@ -195,6 +195,16 @@ def test_run_rule_jira_issue_create(factory, mock_jira):
     )
 
 
+def test_run_rule_source(factory):
+    """
+    The report's "source" is the rule's source file, relative to the
+    configured rules_path.
+    """
+    factory.new_rule(rule_file="examples/rules/rhelwf/foo.yml")
+    report = call_run()
+    assert report.data["inputs"][0]["rules"][0]["source"] == "rhelwf/foo.yml"
+
+
 def test_run_rule_jira_issue_fields(factory, mock_jira):
     jira_issue_prereq = factory.new_jira_issue_prerequisite(fields=DUMMY_ISSUE_FIELDS)
     factory.new_rule(prerequisites=[jira_issue_prereq])

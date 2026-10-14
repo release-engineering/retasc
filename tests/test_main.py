@@ -61,6 +61,7 @@ def test_run(arg, issue_key, capsys):
     expected_lines = dedent("""
       ProductPagesReleases('rhel-10.0')
         Rule('Example Rule')
+          source: rules.yaml
           Condition('major >= 10')
             result: True
           Schedule('GA for rhel {{ major }}.{{ minor }}')
@@ -95,8 +96,10 @@ def test_run(arg, issue_key, capsys):
             state: InProgress
           state: InProgress
         Rule('Dependent Rule 1')
+          source: rules.yaml
           state: Completed
         Rule('Dependent Rule 2')
+          source: rules.yaml
           state: Completed
     """).strip()
     expected_lines = expected_lines.replace("TEST-", f"{issue_key}-").split("\n")
@@ -130,6 +133,7 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
     expected_lines = [
         "ProductPagesReleases('rhel-10.0')",
         "  Rule('Example Rule')",
+        "    source: rules.yaml",
         "    Condition('major >= 10')",
         "      result: True",
         "    Schedule('GA for rhel {{ major }}.{{ minor }}')",
@@ -137,11 +141,13 @@ def test_run_missing_schedule(arg, capsys, mock_pp):
         "      state: Pending",
         "    state: Pending",
         "  Rule('Dependent Rule 1')",
+        "    source: rules.yaml",
         "    Schedule('TASK')",
         "    TargetDate('start_date - 3|weeks')",
         "      target_date: 1989-12-13",
         "    state: Completed",
         "  Rule('Dependent Rule 2')",
+        "    source: rules.yaml",
         "    Schedule('TASK')",
         "    TargetDate('start_date - 2|weeks')",
         "      target_date: 1989-12-20",
@@ -207,15 +213,18 @@ def test_report_output_file(tmp_path):
                 "rules": [
                     {
                         "rule": "Example Rule",
+                        "source": "rules.yaml",
                         "prerequisites": ANY,
                         "state": "InProgress",
                     },
                     {
                         "rule": "Dependent Rule 1",
+                        "source": "rules.yaml",
                         "state": "Completed",
                     },
                     {
                         "rule": "Dependent Rule 2",
+                        "source": "rules.yaml",
                         "state": "Completed",
                     },
                 ],

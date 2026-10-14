@@ -64,6 +64,9 @@ def rules_by_input(context: RuntimeContext) -> list[tuple[InputBase, dict, list[
 def update_state(rule: Rule, context: RuntimeContext):
     with context.report.section("rules", type="Rule", name=rule.name):
         del context.report.current_data["type"]
+        if rule.rule_file:
+            source = os.path.relpath(rule.rule_file, context.config.rules_path)
+            context.report.set("source", source)
         state = rule.update_state(context)
         context.report.set("state", state.name)
 
