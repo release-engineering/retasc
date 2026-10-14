@@ -108,6 +108,36 @@ class JiraClient:
 
         raise RuntimeError(f"Unexpected response: {data!r}")
 
+    def _get_search_page(self, url: str, params: dict) -> dict:
+        data = self.jira.get(url, params=params)
+        if isinstance(data, dict):
+            return data
+
+        raise RuntimeError(f"Unexpected response: {data!r}")
+
+    def _search_issues_cloud(self, jql: str, fields: list[str] | None) -> list:
+        # Call the "search/jql" endpoint via API v2 directly, instead of
+        # jql_get_list_of_tickets()/enhanced_jql_get_list_of_tickets(), which
+        # hardcode API v3. Jira Cloud's v3 API returns rich-text fields (e.g.
+        # description) as ADF instead of plain text, which never compares
+        # equal to the plain text rendered from Jira issue templates.
+        params: dict = {"jql": jql}
+        if fields:
+            params["fields"] = ",".join(fields)
+
+        url = self.jira.resource_url("search/jql", api_version=2)
+        issues: list = []
+        next_page_token = None
+        while True:
+            if next_page_token is not None:
+                params["nextPageToken"] = next_page_token
+            response = self._get_search_page(url, params)
+            issues.extend(response["issues"])
+            next_page_token = response.get("nextPageToken")
+            if not next_page_token:
+                break
+        return issues
+
     @tracer.start_as_current_span("JiraClient.search_issues")
     def search_issues(self, jql: str, fields: list[str] | None = None) -> list:
         """
@@ -115,6 +145,9 @@ class JiraClient:
 
         :param jql: string: like "project = DEMO AND status NOT IN (Closed, Resolved) ORDER BY issuekey"
         """
+
+        if self.cloud:
+            return self._search_issues_cloud(jql, fields)
 
         if fields:
             return self.jira.jql_get_list_of_tickets(jql, fields=fields)  # type: ignore
