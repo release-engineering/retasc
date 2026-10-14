@@ -99,11 +99,46 @@ def test_search_issues_fields(jira_api, requests_mock):
 
 
 def test_search_issues_cloud(jira_cloud_api, requests_mock):
-    requests_mock.get(f"{JIRA_URL}/rest/api/3/search/jql", json=SEARCH_LIST)
+    # Must use API v2, not v3: Jira Cloud's v3 API returns rich-text fields
+    # (e.g. description) as ADF instead of plain text, which never compares
+    # equal to the plain text rendered from Jira issue templates.
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/search/jql", json=SEARCH_LIST)
     issues = jira_cloud_api.search_issues(JQL)
     assert issues == [{"id": "10000", "key": ISSUE_KEY}]
     assert len(requests_mock.request_history) == 1
     assert requests_mock.request_history[0].qs["jql"] == [JQL.lower()]
+
+
+def test_search_issues_cloud_fields(jira_cloud_api, requests_mock):
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/search/jql", json=SEARCH_LIST)
+    issues = jira_cloud_api.search_issues(JQL, fields=["a", "b"])
+    assert issues == [{"id": "10000", "key": ISSUE_KEY}]
+    assert len(requests_mock.request_history) == 1
+    assert requests_mock.request_history[0].qs["fields"] == ["a,b"]
+
+
+def test_search_issues_cloud_pagination(jira_cloud_api, requests_mock):
+    requests_mock.get(
+        f"{JIRA_URL}/rest/api/2/search/jql",
+        [
+            {
+                "json": {
+                    "issues": [{"id": "1", "key": "TEST-1"}],
+                    "nextPageToken": "page2",
+                }
+            },
+            {"json": {"issues": [{"id": "2", "key": "TEST-2"}]}},
+        ],
+    )
+    issues = jira_cloud_api.search_issues(JQL)
+    assert issues == [{"id": "1", "key": "TEST-1"}, {"id": "2", "key": "TEST-2"}]
+    assert len(requests_mock.request_history) == 2
+
+
+def test_unexpected_response_search_issues_cloud(jira_cloud_api, requests_mock):
+    requests_mock.get(f"{JIRA_URL}/rest/api/2/search/jql", json=[])
+    with raises(RuntimeError, match=r"Unexpected response: \[\]"):
+        jira_cloud_api.search_issues(JQL)
 
 
 def test_unexpected_response_create_issue(jira_api, requests_mock):
